@@ -1,9 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants';
 
-export type EmployeeStatus = 'Frozen' | 'Review' | 'Clear' | 'Pending';
+export type EmployeeStatus = 'Frozen' | 'Review' | 'Clear' | 'Pending' | 'Approved';
 
 interface EmployeeListItemProps {
   name: string;
@@ -11,14 +12,20 @@ interface EmployeeListItemProps {
   status: EmployeeStatus;
   badgeCount: number;
   image?: string;
+  id?: string;
 }
 
-export const EmployeeListItem = ({ name, role, status, badgeCount, image }: EmployeeListItemProps) => {
+export const EmployeeListItem = ({ name, role, status, badgeCount, image, id = '1' }: EmployeeListItemProps) => {
+  const router = useRouter();
   const statusKey = status.toLowerCase() as keyof typeof Colors.status;
   const statusStyles = Colors.status[statusKey] || Colors.status.pending;
 
   return (
-    <View style={styles.container}>
+    <TouchableOpacity 
+      style={styles.container} 
+      activeOpacity={0.7}
+      onPress={() => router.push(`/employee/${id}`)}
+    >
       <View style={styles.leftSection}>
         {image ? (
           <Image source={{ uri: image }} style={styles.avatar} />
@@ -43,7 +50,7 @@ export const EmployeeListItem = ({ name, role, status, badgeCount, image }: Empl
           <Text style={[styles.statusText, { color: statusStyles.text }]}>{status}</Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -111,6 +118,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
+    minWidth: 70,
+    alignItems: 'center',
   },
   statusText: {
     fontSize: 12,

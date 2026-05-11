@@ -29,5 +29,12 @@ export const Colors = {
     clear: { bg: '#E6F4F0', text: '#3A6E57' },
     approved: { bg: '#E6F4F0', text: '#3A6E57' },
     pending: { bg: '#F5F5F5', text: '#666666' },
-  }
+  },
+  risk: {
+    high: '#D43A3A',
+    medium: '#D47A3A',
+    low: '#3A6E57',
+  },
+  hold: { bg: '#FEF9C3', text: '#854D0E' },
+  freeze: { bg: '#FEE2E2', text: '#991B1B' },
 };
