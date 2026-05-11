@@ -102,6 +102,7 @@ const Login = () => {
             <TouchableOpacity 
               style={[styles.loginButton, { backgroundColor: Colors.primary }]}
               activeOpacity={0.8}
+              onPress={() => router.replace('/(tabs)')}
             >
               <Text style={styles.loginButtonText}>Login</Text>
             </TouchableOpacity>
