@@ -27,6 +27,7 @@ export const Colors = {
     frozen: { bg: '#FDECEC', text: '#D43A3A' },
     review: { bg: '#FFF7E6', text: '#D47A3A' },
     clear: { bg: '#E6F4F0', text: '#3A6E57' },
+    approved: { bg: '#E6F4F0', text: '#3A6E57' },
     pending: { bg: '#F5F5F5', text: '#666666' },
   }
 };
