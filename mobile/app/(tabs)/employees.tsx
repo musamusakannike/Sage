@@ -10,8 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Plus } from 'lucide-react-native';
 import { Colors } from '@/constants';
-import { EmployeeListItem, EmployeeStatus } from '@/components/EmployeeListItem';
+import { EmployeeListItem } from '@/components/EmployeeListItem';
 import { FilterChip } from '@/components/FilterChip';
+import { UploadBottomSheet } from '@/components/UploadBottomSheet';
 
 const EMPLOYEES: { name: string; role: string; status: any; badgeCount: number; image?: string }[] = [
   { name: 'Chukwuemeka Obi', role: 'Senior Accountant', status: 'Frozen', badgeCount: 28, image: 'https://i.pravatar.cc/150?u=1' },
@@ -26,8 +27,14 @@ const EMPLOYEES: { name: string; role: string; status: any; badgeCount: number; 
 
 const Employees = () => {
   const [activeFilter, setActiveFilter] = useState('All (58)');
+  const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
 
   const filters = ['All (58)', 'Verified (47)', 'Pending (8)', 'Frozen (3)'];
+
+  const handleUploadPress = () => {
+    setIsUploadModalVisible(true);
+    console.log("Clicked upload")
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -46,7 +53,10 @@ const Employees = () => {
               placeholderTextColor={Colors.textSecondary}
             />
           </View>
-          <TouchableOpacity style={styles.uploadButton}>
+          <TouchableOpacity 
+            style={styles.uploadButton}
+            onPress={handleUploadPress}
+          >
             <Text style={styles.uploadText}>Upload</Text>
             <Plus size={20} color="#FFFFFF" />
           </TouchableOpacity>
@@ -95,6 +105,11 @@ const Employees = () => {
         {/* Tab bar padding */}
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      <UploadBottomSheet
+        visible={isUploadModalVisible}
+        onClose={() => setIsUploadModalVisible(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -175,28 +190,27 @@ const styles = StyleSheet.create({
     marginTop: 32,
     alignItems: 'center',
     gap: 16,
-    flexDirection: "row"
   },
   footerInfo: {
-    fontSize: 13,
+    fontSize: 16,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: Colors.textSecondary,
   },
   pagination: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
   },
   paginationButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: '#E0E3DC',
+    borderColor: '#E1E1E1',
     backgroundColor: '#FFFFFF',
   },
   paginationText: {
-    fontSize: 13,
-    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 16,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     color: Colors.textSecondary,
   },
 });
