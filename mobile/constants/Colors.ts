@@ -1,17 +1,19 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
+ * Below are the colors that are used in the app.
  */
 
-const tintColorLight = "#3A6E57";
+const primaryGreen = '#3A6E57';
 
 export const Colors = {
-  text: "#1A1A1A",
-  background: "#FFFFFF",
-  tint: tintColorLight,
-  icon: "#3A6E57",
-  tabIconDefault: "#4E4E4E",
-  tabIconSelected: tintColorLight,
-  primary: "#3A6E57",
-  secondary: "#E1F4CD",
-  error: "#FF3B30",
+  text: '#1A1A1A',
+  textSecondary: '#666666',
+  background: '#FFFFFF',
+  tint: primaryGreen,
+  icon: '#687076',
+  tabIconDefault: '#687076',
+  tabIconSelected: primaryGreen,
+  primary: primaryGreen,
+  secondary: '#F5F5F5',
+  border: '#E1E1E1',
+  error: '#FF3B30',
 };
