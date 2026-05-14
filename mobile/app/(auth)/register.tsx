@@ -8,19 +8,71 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { Colors } from "@/constants";
+import { authApi } from "@/src/api/auth.api";
+import { useToastStore } from "@/src/store/toast.store";
+import type { UserRole } from "@/src/types/auth.types";
+import axios from "axios";
 
 const Register = () => {
   const router = useRouter();
+  const { show } = useToastStore();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [orgName, setOrgName] = useState("");
+  const [role, setRole] = useState<UserRole>("hr_admin");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRegister = async () => {
+    if (!name.trim()) {
+      show({ type: "warning", title: "Name required", message: "Please enter your full name." });
+      return;
+    }
+    if (!email.trim()) {
+      show({ type: "warning", title: "Email required", message: "Please enter your email address." });
+      return;
+    }
+    if (!password || password.length < 8) {
+      show({ type: "warning", title: "Password too short", message: "Password must be at least 8 characters." });
+      return;
+    }
+    if (!orgName.trim()) {
+      show({ type: "warning", title: "Organisation required", message: "Please enter your organisation name." });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await authApi.register({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        orgName: orgName.trim(),
+        role,
+      });
+      show({ type: "success", title: "Account created!", message: "You can now log in with your credentials." });
+      router.replace("/(auth)/login");
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message;
+        const displayMsg = Array.isArray(msg) ? msg[0] : (msg ?? "Something went wrong. Please try again.");
+        show({ type: "error", title: "Registration failed", message: displayMsg });
+      } else {
+        show({ type: "error", title: "Network error", message: "Unable to reach the server. Check your connection." });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -53,6 +105,27 @@ const Register = () => {
           <View style={styles.form}>
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: Colors.text }]}>
+                Full name
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    borderColor: Colors.border,
+                    color: Colors.text,
+                    backgroundColor: Colors.background,
+                  },
+                ]}
+                placeholder="Amara Nwosu"
+                placeholderTextColor={Colors.textSecondary}
+                autoCapitalize="words"
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: Colors.text }]}>
                 Email address
               </Text>
               <TextInput
@@ -70,6 +143,27 @@ const Register = () => {
                 autoCapitalize="none"
                 value={email}
                 onChangeText={setEmail}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: Colors.text }]}>
+                Organisation name
+              </Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  {
+                    borderColor: Colors.border,
+                    color: Colors.text,
+                    backgroundColor: Colors.background,
+                  },
+                ]}
+                placeholder="Ministry of Finance"
+                placeholderTextColor={Colors.textSecondary}
+                autoCapitalize="words"
+                value={orgName}
+                onChangeText={setOrgName}
               />
             </View>
 
@@ -110,14 +204,61 @@ const Register = () => {
               </Text>
             </View>
 
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: Colors.text }]}>
+                Account type
+              </Text>
+              <View style={styles.roleToggle}>
+                <TouchableOpacity
+                  style={[
+                    styles.roleOption,
+                    role === "hr_admin" && { backgroundColor: Colors.primary, borderColor: Colors.primary },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => setRole("hr_admin")}
+                >
+                  <Text
+                    style={[
+                      styles.roleOptionText,
+                      { color: role === "hr_admin" ? "#FFFFFF" : Colors.textSecondary },
+                    ]}
+                  >
+                    HR Admin
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.roleOption,
+                    role === "auditor" && { backgroundColor: Colors.primary, borderColor: Colors.primary },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => setRole("auditor")}
+                >
+                  <Text
+                    style={[
+                      styles.roleOptionText,
+                      { color: role === "auditor" ? "#FFFFFF" : Colors.textSecondary },
+                    ]}
+                  >
+                    Auditor
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <TouchableOpacity
               style={[
                 styles.registerButton,
-                { backgroundColor: Colors.primary },
+                { backgroundColor: Colors.primary, opacity: isLoading ? 0.8 : 1 },
               ]}
               activeOpacity={0.8}
+              onPress={handleRegister}
+              disabled={isLoading}
             >
-              <Text style={styles.registerButtonText}>Sign Up</Text>
+              {isLoading
+                ? <ActivityIndicator color="#FFFFFF" size="small" />
+                : <Text style={styles.registerButtonText}>Sign Up</Text>
+              }
             </TouchableOpacity>
 
             <Text style={[styles.helpText, { color: Colors.textSecondary }]}>
@@ -207,6 +348,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "PlusJakartaSans_400Regular",
     color: "#828282",
+  },
+  roleToggle: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  roleOption: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  roleOptionText: {
+    fontSize: 14,
+    fontFamily: "PlusJakartaSans_600SemiBold",
   },
   registerButton: {
     width: "100%",

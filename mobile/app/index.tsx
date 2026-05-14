@@ -1,5 +1,18 @@
 import { Redirect } from "expo-router";
+import { View, ActivityIndicator } from "react-native";
+import { useAuthStore } from "@/src/store/auth.store";
+import { Colors } from "@/constants";
 
 export default function Index() {
-  return <Redirect href="/(auth)/login" />;
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
+
+  if (!_hasHydrated) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.background }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  return isAuthenticated ? <Redirect href="/(tabs)" /> : <Redirect href="/(auth)/login" />;
 }
