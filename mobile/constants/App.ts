@@ -1,5 +1,5 @@
 export const AppConstants = {
   appName: 'Sage',
   version: '1.0.0',
-  apiBaseUrl: 'https://api.sage.com',
+  apiBaseUrl: 'http://localhost:3000/api/v1',
 };

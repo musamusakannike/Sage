@@ -8,19 +8,57 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { Colors } from '@/constants';
+import { authApi } from '@/src/api/auth.api';
+import { useAuthStore } from '@/src/store/auth.store';
+import { useToastStore } from '@/src/store/toast.store';
+import axios from 'axios';
 
 const Login = () => {
   const router = useRouter();
-  
+  const { login } = useAuthStore();
+  const { show } = useToastStore();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email.trim()) {
+      show({ type: 'warning', title: 'Email required', message: 'Please enter your email address.' });
+      return;
+    }
+    if (!password) {
+      show({ type: 'warning', title: 'Password required', message: 'Please enter your password.' });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await authApi.login({ email: email.trim().toLowerCase(), password });
+      const token = res.data.data.access_token;
+      login(token);
+      show({ type: 'success', title: 'Welcome back!', message: 'Login successful.' });
+      router.replace('/(tabs)');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message;
+        const displayMsg = Array.isArray(msg) ? msg[0] : (msg ?? 'Something went wrong. Please try again.');
+        show({ type: 'error', title: 'Login failed', message: displayMsg });
+      } else {
+        show({ type: 'error', title: 'Network error', message: 'Unable to reach the server. Check your connection.' });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors.background }]}>
@@ -100,37 +138,21 @@ const Login = () => {
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.loginButton, { backgroundColor: Colors.primary }]}
+              style={[styles.loginButton, { backgroundColor: Colors.primary, opacity: isLoading ? 0.8 : 1 }]}
               activeOpacity={0.8}
-              onPress={() => router.replace('/(tabs)')}
+              onPress={handleLogin}
+              disabled={isLoading}
             >
-              <Text style={styles.loginButtonText}>Login</Text>
+              {isLoading
+                ? <ActivityIndicator color="#FFFFFF" size="small" />
+                : <Text style={styles.loginButtonText}>Login</Text>
+              }
             </TouchableOpacity>
 
             <Text style={[styles.helpText, { color: Colors.textSecondary }]}>
               No account needed for employees they verify via SMS link
             </Text>
           </View>
-
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={[styles.divider, { backgroundColor: Colors.border }]} />
-            <Text style={[styles.dividerText, { color: Colors.textSecondary }]}>Or login with</Text>
-            <View style={[styles.divider, { backgroundColor: Colors.border }]} />
-          </View>
-
-          {/* Social Login */}
-          <TouchableOpacity 
-            style={[styles.googleButton, { backgroundColor: Colors.secondary }]}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.googleButtonText, { color: Colors.text }]}>Google</Text>
-            <Image
-              source={require('@/assets/images/google.png')}
-              style={styles.googleIcon}
-              contentFit="contain"
-            />
-          </TouchableOpacity>
 
           {/* Footer */}
           <View style={styles.footer}>
@@ -270,6 +292,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 50,
   },
   footerText: {
     fontSize: 14,
