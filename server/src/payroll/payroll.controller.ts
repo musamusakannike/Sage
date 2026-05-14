@@ -72,6 +72,7 @@ export class PayrollController {
         employee.name,
         deepLink,
         expiresAt,
+        employee.email,
       );
       sent++;
     }

@@ -19,10 +19,9 @@ export default () => ({
     senderId: process.env.SMS_SENDER_ID ?? 'Sage AI',
   },
 
-  firebase: {
-    projectId: process.env.FIREBASE_PROJECT_ID ?? '',
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? '',
-    privateKey: (process.env.FIREBASE_PRIVATE_KEY ?? '').replace(/\\n/g, '\n'),
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY ?? '',
+    fromAddress: process.env.EMAIL_FROM ?? 'Sage AI <noreply@sage.ai>',
   },
 
   app: {

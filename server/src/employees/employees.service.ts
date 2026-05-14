@@ -14,6 +14,7 @@ interface CsvRow {
   Role: string;
   'Account Number': string;
   'Phone Number': string;
+  Email?: string;
 }
 
 export interface ImportResult {
@@ -128,6 +129,7 @@ export class EmployeesService {
       const accountNumber = row['Account Number']?.trim();
       const name = row['Name']?.trim();
       const roleTitle = row['Role']?.trim();
+      const email = row['Email']?.trim() || null;
 
       if (!phone || !accountNumber) {
         skipped++;
@@ -151,6 +153,7 @@ export class EmployeesService {
         roleTitle,
         accountNumber,
         phone,
+        email,
         status: EmployeeStatus.PENDING,
       });
       imported++;

@@ -21,6 +21,9 @@ export class Employee {
   @Prop({ required: true, type: String, unique: true })
   phone: string;
 
+  @Prop({ type: String, default: null })
+  email: string | null;
+
   @Prop({ type: Number, default: null })
   dnaScore: number | null;
 
