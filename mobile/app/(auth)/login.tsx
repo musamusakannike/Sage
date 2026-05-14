@@ -112,26 +112,6 @@ const Login = () => {
             </Text>
           </View>
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={[styles.divider, { backgroundColor: Colors.border }]} />
-            <Text style={[styles.dividerText, { color: Colors.textSecondary }]}>Or login with</Text>
-            <View style={[styles.divider, { backgroundColor: Colors.border }]} />
-          </View>
-
-          {/* Social Login */}
-          <TouchableOpacity 
-            style={[styles.googleButton, { backgroundColor: Colors.secondary }]}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.googleButtonText, { color: Colors.text }]}>Google</Text>
-            <Image
-              source={require('@/assets/images/google.png')}
-              style={styles.googleIcon}
-              contentFit="contain"
-            />
-          </TouchableOpacity>
-
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: Colors.textSecondary }]}>
@@ -270,6 +250,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: 50,
   },
   footerText: {
     fontSize: 14,
