@@ -1,19 +1,23 @@
+import 'reflect-metadata';
 import { NestFactory, Reflector } from '@nestjs/core';
-import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
+import { ValidationPipe, ClassSerializerInterceptor, INestApplication } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import express from 'express';
+import * as express from 'express';
+import type { Request, Response } from 'express';
 import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
 
-const expressApp = express();
+const server = express.default();
 
-let cachedApp: any;
+let cachedApp: INestApplication | null = null;
 
-async function bootstrap() {
+async function bootstrap(): Promise<INestApplication> {
   if (cachedApp) return cachedApp;
 
-  const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
+    logger: ['error', 'warn'],
+  });
 
   app.setGlobalPrefix('api/v1');
 
@@ -43,7 +47,17 @@ async function bootstrap() {
   return app;
 }
 
-export default async (req: any, res: any) => {
-  await bootstrap();
-  expressApp(req, res);
+export default async (req: Request, res: Response) => {
+  try {
+    await bootstrap();
+    server(req, res);
+  } catch (error) {
+    console.error('Bootstrap error:', error);
+    res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: 'Server initialization failed',
+      timestamp: new Date().toISOString(),
+    });
+  }
 };
