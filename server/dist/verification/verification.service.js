@@ -18,9 +18,9 @@ const mongoose_1 = require("@nestjs/mongoose");
 const config_1 = require("@nestjs/config");
 const mongoose_2 = require("mongoose");
 const uuid_1 = require("uuid");
-const jwt_1 = require("@nestjs/jwt");
 const verification_session_schema_1 = require("./schemas/verification-session.schema");
 const scoring_service_1 = require("../scoring/scoring.service");
+const gemini_service_1 = require("../gemini/gemini.service");
 const employees_service_1 = require("../employees/employees.service");
 const CHALLENGE_POOL = [
     'Blink twice, then tilt your head to the right.',
@@ -35,15 +35,15 @@ const CHALLENGE_POOL = [
 let VerificationService = class VerificationService {
     sessionModel;
     scoringService;
+    geminiService;
     employeesService;
     configService;
-    jwtService;
-    constructor(sessionModel, scoringService, employeesService, configService, jwtService) {
+    constructor(sessionModel, scoringService, geminiService, employeesService, configService) {
         this.sessionModel = sessionModel;
         this.scoringService = scoringService;
+        this.geminiService = geminiService;
         this.employeesService = employeesService;
         this.configService = configService;
-        this.jwtService = jwtService;
     }
     async createSession(employeeId, orgId, cycleId, expiresAt) {
         const token = (0, uuid_1.v4)();
@@ -68,28 +68,26 @@ let VerificationService = class VerificationService {
         if (session.attemptCount >= 2) {
             throw new common_1.BadRequestException('Verification window closed. No more retries.');
         }
-        const recentSessions = await this.sessionModel
-            .find({
-            orgId: session.orgId,
-            cycleId: session.cycleId,
-            verifiedAt: {
-                $exists: true,
-                $ne: null,
-                $gte: new Date(Date.now() - 10 * 60 * 1000),
-            },
-        })
-            .lean()
-            .exec();
-        const sameDeviceSessions = await this.sessionModel
-            .find({
-            orgId: session.orgId,
-            deviceFingerprint: dto.deviceFingerprint,
-            _id: { $ne: session._id },
-            cycleId: session.cycleId,
-        })
-            .lean()
-            .exec();
-        const scores = this.scoringService.compute({
+        const [recentSessions, sameDeviceSessions] = await Promise.all([
+            this.sessionModel
+                .find({
+                orgId: session.orgId,
+                cycleId: session.cycleId,
+                verifiedAt: { $exists: true, $ne: null, $gte: new Date(Date.now() - 10 * 60 * 1000) },
+            })
+                .lean()
+                .exec(),
+            this.sessionModel
+                .find({
+                orgId: session.orgId,
+                deviceFingerprint: dto.deviceFingerprint,
+                _id: { $ne: session._id },
+                cycleId: session.cycleId,
+            })
+                .lean()
+                .exec(),
+        ]);
+        const ruleScores = this.scoringService.compute({
             livenessPasssed: dto.livenessPasssed,
             gpsCaptured: dto.gpsCaptured,
             gpsLat: dto.gpsLat,
@@ -98,21 +96,46 @@ let VerificationService = class VerificationService {
             recentSessionCount: recentSessions.length,
             sameDeviceCount: sameDeviceSessions.length,
         });
-        await this.sessionModel
-            .findByIdAndUpdate(session._id, {
+        const geminiAnalysis = await this.geminiService.analyzeVerification({
+            livenessPasssed: dto.livenessPasssed,
+            gpsCaptured: dto.gpsCaptured,
+            gpsLat: dto.gpsLat,
+            gpsLng: dto.gpsLng,
+            deviceFingerprint: dto.deviceFingerprint,
+            recentSessionCount: recentSessions.length,
+            sameDeviceCount: sameDeviceSessions.length,
+            ruleBasedScore: ruleScores.totalDnaScore,
+            challengeCode: session.challengeCode,
+        });
+        const finalDnaScore = this.geminiService.blendScores(ruleScores.totalDnaScore, geminiAnalysis);
+        await this.sessionModel.findByIdAndUpdate(session._id, {
             deviceFingerprint: dto.deviceFingerprint,
             gpsLat: dto.gpsLat ?? null,
             gpsLng: dto.gpsLng ?? null,
             gpsCaptured: dto.gpsCaptured,
             livenessPasssed: dto.livenessPasssed,
-            ...scores,
+            scoreLiveness: ruleScores.scoreLiveness,
+            scoreGeoCluster: ruleScores.scoreGeoCluster,
+            scoreDevice: ruleScores.scoreDevice,
+            scoreTimeCluster: ruleScores.scoreTimeCluster,
+            scorePayVelocity: ruleScores.scorePayVelocity,
+            ruleBasedDnaScore: ruleScores.totalDnaScore,
+            geminiRiskLevel: geminiAnalysis?.riskLevel ?? null,
+            geminiReason: geminiAnalysis?.riskReason ?? null,
+            geminiAdjustedScore: geminiAnalysis?.adjustedScore ?? null,
+            geminiAnomalyFlags: geminiAnalysis?.anomalyFlags ?? null,
+            totalDnaScore: finalDnaScore,
             isConsumed: true,
             verifiedAt: new Date(),
             $inc: { attemptCount: 1 },
-        })
-            .exec();
-        await this.employeesService.updateDnaScore(session.employeeId.toString(), scores.totalDnaScore);
-        return { message: 'Verification received.' };
+        }).exec();
+        await this.employeesService.updateDnaScore(session.employeeId.toString(), finalDnaScore);
+        return {
+            message: 'Verification received.',
+            dnaScore: finalDnaScore,
+            riskLevel: geminiAnalysis?.riskLevel ?? null,
+            aiEnabled: geminiAnalysis !== null,
+        };
     }
     async findValidSession(token) {
         const session = await this.sessionModel.findOne({ token }).exec();
@@ -140,8 +163,8 @@ exports.VerificationService = VerificationService = __decorate([
     __param(0, (0, mongoose_1.InjectModel)(verification_session_schema_1.VerificationSession.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
         scoring_service_1.ScoringService,
+        gemini_service_1.GeminiService,
         employees_service_1.EmployeesService,
-        config_1.ConfigService,
-        jwt_1.JwtService])
+        config_1.ConfigService])
 ], VerificationService);
 //# sourceMappingURL=verification.service.js.map

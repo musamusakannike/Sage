@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-interface ScoreInput {
+export interface ScoreInput {
   livenessPasssed: boolean;
   gpsCaptured: boolean;
   gpsLat?: number;
@@ -11,7 +11,7 @@ interface ScoreInput {
   velocityFlagFromTransaction?: boolean;
 }
 
-interface ScoreOutput {
+export interface ScoreOutput {
   scoreLiveness: number;
   scoreGeoCluster: number;
   scoreDevice: number;
@@ -23,31 +23,18 @@ interface ScoreOutput {
 @Injectable()
 export class ScoringService {
   compute(input: ScoreInput): ScoreOutput {
-    const scoreLiveness = this.computeLiveness(input.livenessPasssed);
-    const scoreGeoCluster = this.computeGeoCluster(input.gpsCaptured);
-    const scoreDevice = this.computeDevice(input.sameDeviceCount);
+    const scoreLiveness    = this.computeLiveness(input.livenessPasssed);
+    const scoreGeoCluster  = this.computeGeoCluster(input.gpsCaptured);
+    const scoreDevice      = this.computeDevice(input.sameDeviceCount);
     const scoreTimeCluster = this.computeTimeCluster(input.recentSessionCount);
-    const scorePayVelocity = this.computePayVelocity(
-      input.velocityFlagFromTransaction,
-    );
+    const scorePayVelocity = this.computePayVelocity(input.velocityFlagFromTransaction);
 
     const totalDnaScore = Math.min(
       100,
-      scoreLiveness +
-        scoreGeoCluster +
-        scoreDevice +
-        scoreTimeCluster +
-        scorePayVelocity,
+      scoreLiveness + scoreGeoCluster + scoreDevice + scoreTimeCluster + scorePayVelocity,
     );
 
-    return {
-      scoreLiveness,
-      scoreGeoCluster,
-      scoreDevice,
-      scoreTimeCluster,
-      scorePayVelocity,
-      totalDnaScore,
-    };
+    return { scoreLiveness, scoreGeoCluster, scoreDevice, scoreTimeCluster, scorePayVelocity, totalDnaScore };
   }
 
   private computeLiveness(passed: boolean): number {
@@ -55,8 +42,7 @@ export class ScoringService {
   }
 
   private computeGeoCluster(gpsCaptured: boolean): number {
-    if (!gpsCaptured) return 10;
-    return 20;
+    return gpsCaptured ? 20 : 10;
   }
 
   private computeDevice(sameDeviceCount: number): number {

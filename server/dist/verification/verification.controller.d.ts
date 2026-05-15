@@ -5,9 +5,11 @@ export declare class VerificationController {
     constructor(verificationService: VerificationService);
     getChallenge(token: string): Promise<{
         challenge: string;
-        orgName?: string;
     }>;
     submitChallenge(token: string, dto: SubmitChallengeDto): Promise<{
         message: string;
+        dnaScore: number;
+        riskLevel: string | null;
+        aiEnabled: boolean;
     }>;
 }

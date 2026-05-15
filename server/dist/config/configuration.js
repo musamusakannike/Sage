@@ -29,5 +29,9 @@ exports.default = () => ({
         ttl: parseInt(process.env.THROTTLE_TTL ?? '60000', 10),
         limit: parseInt(process.env.THROTTLE_LIMIT ?? '10', 10),
     },
+    gemini: {
+        apiKey: process.env.GEMINI_API_KEY ?? '',
+        model: process.env.GEMINI_MODEL ?? 'gemini-2.0-flash',
+    },
 });
 //# sourceMappingURL=configuration.js.map

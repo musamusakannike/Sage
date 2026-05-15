@@ -2,7 +2,13 @@
 
 import { motion } from 'framer-motion';
 
-export default function PayrollCard() {
+interface PayrollCardProps {
+  daysUntil: number;
+  disbursementDate: string;
+  isScheduled?: boolean;
+}
+
+export default function PayrollCard({ daysUntil, disbursementDate, isScheduled = true }: PayrollCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -19,37 +25,11 @@ export default function PayrollCard() {
         overflow: 'hidden',
       }}
     >
-      {/* Decorative circle */}
-      <div
-        style={{
-          position: 'absolute',
-          right: -40,
-          top: -40,
-          width: 180,
-          height: 180,
-          borderRadius: '50%',
-          background: 'rgba(58,110,87,0.12)',
-          pointerEvents: 'none',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          right: 60,
-          bottom: -60,
-          width: 120,
-          height: 120,
-          borderRadius: '50%',
-          background: 'rgba(58,110,87,0.07)',
-          pointerEvents: 'none',
-        }}
-      />
+      <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(58,110,87,0.12)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', right: 60, bottom: -60, width: 120, height: 120, borderRadius: '50%', background: 'rgba(58,110,87,0.07)', pointerEvents: 'none' }} />
 
-      {/* Left */}
       <div>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
-          Next payroll in
-        </p>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Next payroll in</p>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
           <motion.span
             initial={{ opacity: 0, scale: 0.8 }}
@@ -57,30 +37,18 @@ export default function PayrollCard() {
             transition={{ delay: 0.3, type: 'spring', stiffness: 300 }}
             style={{ color: '#fff', fontSize: 56, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.03em' }}
           >
-            5
+            {daysUntil}
           </motion.span>
           <span style={{ color: '#fff', fontSize: 20, fontWeight: 500 }}>days</span>
         </div>
       </div>
 
-      {/* Right */}
       <div style={{ textAlign: 'right', position: 'relative', zIndex: 1 }}>
-        <p style={{ color: '#fff', fontSize: 20, fontWeight: 600, marginBottom: 8 }}>
-          25 June, 2026
-        </p>
+        <p style={{ color: '#fff', fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{disbursementDate}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-          <span
-            className="pulse-dot"
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: 'var(--color-success)',
-              display: 'inline-block',
-            }}
-          />
+          <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: isScheduled ? 'var(--color-success)' : 'var(--color-pending)', display: 'inline-block' }} />
           <span style={{ color: 'var(--color-text-muted)', fontSize: 13, fontWeight: 500 }}>
-            Scheduled
+            {isScheduled ? 'Scheduled' : 'Not scheduled'}
           </span>
         </div>
       </div>

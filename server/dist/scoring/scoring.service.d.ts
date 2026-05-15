@@ -1,4 +1,4 @@
-interface ScoreInput {
+export interface ScoreInput {
     livenessPasssed: boolean;
     gpsCaptured: boolean;
     gpsLat?: number;
@@ -8,7 +8,7 @@ interface ScoreInput {
     sameDeviceCount: number;
     velocityFlagFromTransaction?: boolean;
 }
-interface ScoreOutput {
+export interface ScoreOutput {
     scoreLiveness: number;
     scoreGeoCluster: number;
     scoreDevice: number;
@@ -24,4 +24,3 @@ export declare class ScoringService {
     private computeTimeCluster;
     private computePayVelocity;
 }
-export {};
