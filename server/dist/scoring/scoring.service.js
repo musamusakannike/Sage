@@ -15,27 +15,14 @@ let ScoringService = class ScoringService {
         const scoreDevice = this.computeDevice(input.sameDeviceCount);
         const scoreTimeCluster = this.computeTimeCluster(input.recentSessionCount);
         const scorePayVelocity = this.computePayVelocity(input.velocityFlagFromTransaction);
-        const totalDnaScore = Math.min(100, scoreLiveness +
-            scoreGeoCluster +
-            scoreDevice +
-            scoreTimeCluster +
-            scorePayVelocity);
-        return {
-            scoreLiveness,
-            scoreGeoCluster,
-            scoreDevice,
-            scoreTimeCluster,
-            scorePayVelocity,
-            totalDnaScore,
-        };
+        const totalDnaScore = Math.min(100, scoreLiveness + scoreGeoCluster + scoreDevice + scoreTimeCluster + scorePayVelocity);
+        return { scoreLiveness, scoreGeoCluster, scoreDevice, scoreTimeCluster, scorePayVelocity, totalDnaScore };
     }
     computeLiveness(passed) {
         return passed ? 30 : 0;
     }
     computeGeoCluster(gpsCaptured) {
-        if (!gpsCaptured)
-            return 10;
-        return 20;
+        return gpsCaptured ? 20 : 10;
     }
     computeDevice(sameDeviceCount) {
         if (sameDeviceCount === 0)

@@ -7,6 +7,7 @@ import {
   VerificationSessionSchema,
 } from './schemas/verification-session.schema';
 import { ScoringModule } from '../scoring/scoring.module';
+import { GeminiModule } from '../gemini/gemini.module';
 import { EmployeesModule } from '../employees/employees.module';
 import { AuthModule } from '../auth/auth.module';
 
@@ -16,6 +17,7 @@ import { AuthModule } from '../auth/auth.module';
       { name: VerificationSession.name, schema: VerificationSessionSchema },
     ]),
     ScoringModule,
+    GeminiModule,
     EmployeesModule,
     AuthModule,
   ],

@@ -17,6 +17,11 @@ export declare class VerificationSession {
     scoreDevice: number | null;
     scoreTimeCluster: number | null;
     scorePayVelocity: number | null;
+    ruleBasedDnaScore: number | null;
+    geminiRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+    geminiReason: string | null;
+    geminiAdjustedScore: number | null;
+    geminiAnomalyFlags: string[] | null;
     totalDnaScore: number | null;
     verifiedAt: Date | null;
     cycleId: string | null;
@@ -167,6 +172,51 @@ export declare const VerificationSessionSchema: import("mongoose").Schema<Verifi
         id: string;
     }> | undefined;
     scorePayVelocity?: import("mongoose").SchemaDefinitionProperty<number | null, VerificationSession, import("mongoose").Document<unknown, {}, VerificationSession, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<VerificationSession & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    ruleBasedDnaScore?: import("mongoose").SchemaDefinitionProperty<number | null, VerificationSession, import("mongoose").Document<unknown, {}, VerificationSession, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<VerificationSession & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    geminiRiskLevel?: import("mongoose").SchemaDefinitionProperty<"LOW" | "MEDIUM" | "HIGH" | null, VerificationSession, import("mongoose").Document<unknown, {}, VerificationSession, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<VerificationSession & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    geminiReason?: import("mongoose").SchemaDefinitionProperty<string | null, VerificationSession, import("mongoose").Document<unknown, {}, VerificationSession, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<VerificationSession & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    geminiAdjustedScore?: import("mongoose").SchemaDefinitionProperty<number | null, VerificationSession, import("mongoose").Document<unknown, {}, VerificationSession, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<VerificationSession & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    geminiAnomalyFlags?: import("mongoose").SchemaDefinitionProperty<string[] | null, VerificationSession, import("mongoose").Document<unknown, {}, VerificationSession, {
         id: string;
     }, import("mongoose").DefaultSchemaOptions> & Omit<VerificationSession & {
         _id: Types.ObjectId;

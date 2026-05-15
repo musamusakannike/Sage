@@ -20,6 +20,7 @@ import { CasesModule } from './cases/cases.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SquadModule } from './squad/squad.module';
 import { ExportModule } from './export/export.module';
+import { GeminiModule } from './gemini/gemini.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { ExportModule } from './export/export.module';
     NotificationsModule,
     SquadModule,
     ExportModule,
+    GeminiModule,
   ],
   providers: [
     {

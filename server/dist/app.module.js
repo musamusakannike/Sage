@@ -30,6 +30,7 @@ const cases_module_1 = require("./cases/cases.module");
 const notifications_module_1 = require("./notifications/notifications.module");
 const squad_module_1 = require("./squad/squad.module");
 const export_module_1 = require("./export/export.module");
+const gemini_module_1 = require("./gemini/gemini.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -70,6 +71,7 @@ exports.AppModule = AppModule = __decorate([
             notifications_module_1.NotificationsModule,
             squad_module_1.SquadModule,
             export_module_1.ExportModule,
+            gemini_module_1.GeminiModule,
         ],
         providers: [
             {

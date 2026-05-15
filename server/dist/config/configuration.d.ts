@@ -27,5 +27,9 @@ declare const _default: () => {
         ttl: number;
         limit: number;
     };
+    gemini: {
+        apiKey: string;
+        model: string;
+    };
 };
 export default _default;

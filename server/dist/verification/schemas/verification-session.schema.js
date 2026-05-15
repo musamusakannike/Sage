@@ -29,6 +29,11 @@ let VerificationSession = class VerificationSession {
     scoreDevice;
     scoreTimeCluster;
     scorePayVelocity;
+    ruleBasedDnaScore;
+    geminiRiskLevel;
+    geminiReason;
+    geminiAdjustedScore;
+    geminiAnomalyFlags;
     totalDnaScore;
     verifiedAt;
     cycleId;
@@ -99,6 +104,26 @@ __decorate([
     (0, mongoose_1.Prop)({ type: Number, default: null }),
     __metadata("design:type", Object)
 ], VerificationSession.prototype, "scorePayVelocity", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: Number, default: null }),
+    __metadata("design:type", Object)
+], VerificationSession.prototype, "ruleBasedDnaScore", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: String, default: null }),
+    __metadata("design:type", Object)
+], VerificationSession.prototype, "geminiRiskLevel", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: String, default: null }),
+    __metadata("design:type", Object)
+], VerificationSession.prototype, "geminiReason", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: Number, default: null }),
+    __metadata("design:type", Object)
+], VerificationSession.prototype, "geminiAdjustedScore", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: [String], default: null }),
+    __metadata("design:type", Object)
+], VerificationSession.prototype, "geminiAnomalyFlags", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ type: Number, default: null }),
     __metadata("design:type", Object)

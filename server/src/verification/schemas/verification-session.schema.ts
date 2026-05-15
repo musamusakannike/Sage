@@ -38,6 +38,8 @@ export class VerificationSession {
   @Prop({ type: Boolean, default: null })
   livenessPasssed: boolean | null;
 
+  // ── Rule-based score breakdown ─────────────────────────────────────────────
+
   @Prop({ type: Number, default: null })
   scoreLiveness: number | null;
 
@@ -53,6 +55,31 @@ export class VerificationSession {
   @Prop({ type: Number, default: null })
   scorePayVelocity: number | null;
 
+  /** Raw deterministic score before Gemini blending */
+  @Prop({ type: Number, default: null })
+  ruleBasedDnaScore: number | null;
+
+  // ── Gemini AI analysis ─────────────────────────────────────────────────────
+
+  /** Gemini's risk classification: LOW | MEDIUM | HIGH */
+  @Prop({ type: String, default: null })
+  geminiRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+
+  /** Human-readable explanation from Gemini for HR admins */
+  @Prop({ type: String, default: null })
+  geminiReason: string | null;
+
+  /** Gemini's suggested 0–100 score based on pattern analysis */
+  @Prop({ type: Number, default: null })
+  geminiAdjustedScore: number | null;
+
+  /** Specific anomaly flags raised by Gemini */
+  @Prop({ type: [String], default: null })
+  geminiAnomalyFlags: string[] | null;
+
+  // ── Final blended score ────────────────────────────────────────────────────
+
+  /** Final DNA score: 65% rule-based + 35% Gemini (falls back to rule-based if Gemini unavailable) */
   @Prop({ type: Number, default: null })
   totalDnaScore: number | null;
 

@@ -13,6 +13,7 @@ const verification_controller_1 = require("./verification.controller");
 const verification_service_1 = require("./verification.service");
 const verification_session_schema_1 = require("./schemas/verification-session.schema");
 const scoring_module_1 = require("../scoring/scoring.module");
+const gemini_module_1 = require("../gemini/gemini.module");
 const employees_module_1 = require("../employees/employees.module");
 const auth_module_1 = require("../auth/auth.module");
 let VerificationModule = class VerificationModule {
@@ -25,6 +26,7 @@ exports.VerificationModule = VerificationModule = __decorate([
                 { name: verification_session_schema_1.VerificationSession.name, schema: verification_session_schema_1.VerificationSessionSchema },
             ]),
             scoring_module_1.ScoringModule,
+            gemini_module_1.GeminiModule,
             employees_module_1.EmployeesModule,
             auth_module_1.AuthModule,
         ],
