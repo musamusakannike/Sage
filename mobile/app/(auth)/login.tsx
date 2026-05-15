@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants';
 import { authApi } from '@/src/api/auth.api';
 import { useAuthStore } from '@/src/store/auth.store';
@@ -46,7 +46,7 @@ const Login = () => {
       const token = res.data.data.access_token;
       login(token);
       show({ type: 'success', title: 'Welcome back!', message: 'Login successful.' });
-      router.replace('/(tabs)');
+      router.replace('/home');
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const msg = err.response?.data?.message;
@@ -149,21 +149,13 @@ const Login = () => {
               }
             </TouchableOpacity>
 
-            <Text style={[styles.helpText, { color: Colors.textSecondary }]}>
-              No account needed for employees they verify via SMS link
-            </Text>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: Colors.textSecondary }]}>
-              Don't have an account?{' '}
+              Contact your HR admin for account access
             </Text>
-            <Link href="/(auth)/register" asChild>
-              <TouchableOpacity>
-                <Text style={[styles.signUpText, { color: Colors.primary }]}>Sign Up</Text>
-              </TouchableOpacity>
-            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -297,9 +289,5 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 14,
     fontFamily: 'PlusJakartaSans_400Regular',
-  },
-  signUpText: {
-    fontSize: 14,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
 });

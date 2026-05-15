@@ -5,7 +5,7 @@ export default function AuthLayout() {
   const { isAuthenticated, _hasHydrated } = useAuthStore();
 
   if (_hasHydrated && isAuthenticated) {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href="/home" />;
   }
 
   return <Stack screenOptions={{ headerShown: false }} />;

@@ -43,7 +43,7 @@ export default function VerifyScreen() {
   }, [cameraPermission, locationPermission]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval>;
     if (flowState === 'scanning-red' || flowState === 'scanning-teal') {
       timer = setInterval(() => {
         setTimeLeft((prev) => {

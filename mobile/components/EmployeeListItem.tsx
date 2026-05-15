@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { Colors } from '@/constants';
 
 export type EmployeeStatus = 'CLEAR' | 'REVIEW' | 'FROZEN' | 'PENDING' | 'FLAGGED';
@@ -16,7 +15,6 @@ interface EmployeeListItemProps {
 }
 
 export const EmployeeListItem = ({ name, role, status, dnaScore, image, id = '1' }: EmployeeListItemProps) => {
-  const router = useRouter();
   const statusKey = status.toLowerCase() as keyof typeof Colors.status;
   const statusStyles = Colors.status[statusKey] || Colors.status.pending;
   const displayStatus = status.charAt(0) + status.slice(1).toLowerCase();
@@ -25,7 +23,6 @@ export const EmployeeListItem = ({ name, role, status, dnaScore, image, id = '1'
     <TouchableOpacity 
       style={styles.container} 
       activeOpacity={0.7}
-      onPress={() => router.push(`/employee/${id}`)}
     >
       <View style={styles.leftSection}>
         {image ? (
