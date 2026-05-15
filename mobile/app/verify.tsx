@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -142,7 +142,7 @@ export default function VerifyScreen() {
         </Text>
       </View>
 
-      {/* Camera Section */}
+      {/* Camera/Face Section */}
       <View style={styles.cameraSection}>
         {/* Step Indicator and Timer overlaying the top of camera section */}
         <View style={styles.cameraOverlayTop}>
@@ -151,29 +151,38 @@ export default function VerifyScreen() {
             <Text style={styles.stepText}>1 of 3</Text>
           </View>
           <View style={styles.timerContainer}>
-            <View style={[styles.cornerTopRight]} />
             <Text style={styles.timerText}>0:{timeLeft.toString().padStart(2, '0')}</Text>
+            <View style={[styles.cornerTopRight]} />
           </View>
         </View>
 
-        <View style={styles.cameraWrapper}>
-          <CameraView 
-            style={styles.camera} 
-            facing="front"
-            animateShutter={false}
-          >
-            {/* The oval mask */}
-            <View style={styles.maskContainer}>
+        <View style={styles.faceContainer}>
+          {flowState === 'default' ? (
+            // Show face silhouette when not scanning
+            <View style={styles.silhouetteWrapper}>
+              <Image 
+                source={require('../assets/images/face-silhouette.png')}
+                style={styles.silhouetteImage}
+                resizeMode="contain"
+              />
+              <View style={styles.dashedOval} />
+            </View>
+          ) : (
+            // Show camera when scanning
+            <CameraView 
+              style={styles.camera} 
+              facing="front"
+              animateShutter={false}
+            >
               <View 
                 style={[
-                  styles.maskOval,
-                  flowState === 'scanning-red' && { borderColor: Colors.red, borderStyle: 'dashed' },
-                  flowState === 'scanning-teal' && { borderColor: Colors.teal, borderStyle: 'dashed' },
-                  flowState === 'default' && { borderColor: 'rgba(200,200,200,0.5)', borderStyle: 'dashed' },
+                  styles.dashedOval,
+                  flowState === 'scanning-red' && { borderColor: Colors.red },
+                  flowState === 'scanning-teal' && { borderColor: Colors.teal },
                 ]} 
               />
-            </View>
-          </CameraView>
+            </CameraView>
+          )}
         </View>
 
         {/* Bottom corners overlay */}
@@ -181,16 +190,16 @@ export default function VerifyScreen() {
           <View style={styles.cornerBottomLeft} />
           <View style={styles.cornerBottomRight} />
         </View>
+      </View>
 
-        {/* Dynamic Instruction */}
-        <View style={styles.instructionContainer}>
-          {flowState === 'scanning-red' && (
-            <Text style={[styles.instructionText, { color: Colors.red }]}>Your face should be within the frame</Text>
-          )}
-          {flowState === 'scanning-teal' && (
-            <Text style={[styles.instructionText, { color: Colors.teal }]}>Blink twice</Text>
-          )}
-        </View>
+      {/* Dynamic Instruction */}
+      <View style={styles.instructionContainer}>
+        {flowState === 'scanning-red' && (
+          <Text style={[styles.instructionText, { color: Colors.red }]}>Your face should be within the frame</Text>
+        )}
+        {flowState === 'scanning-teal' && (
+          <Text style={[styles.instructionText, { color: '#D97706' }]}>Blink twice</Text>
+        )}
       </View>
 
       {/* Record Button */}
@@ -221,8 +230,8 @@ export default function VerifyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
-    paddingHorizontal: 20,
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 16,
   },
   permissionText: {
     textAlign: 'center',
@@ -244,57 +253,59 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 24,
+    marginTop: 16,
+    marginBottom: 20,
   },
   logoContainer: {
-    width: 48,
-    height: 48,
+    width: 52,
+    height: 52,
     backgroundColor: Colors.purpleLight,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   headerTextContainer: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: Colors.text,
-    fontFamily: 'PlusJakartaSans_700Bold', // assuming this is available based on package.json
+    fontFamily: 'PlusJakartaSans_700Bold',
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 13,
     color: Colors.textSecondary,
     fontFamily: 'PlusJakartaSans_400Regular',
-    marginTop: 2,
+    marginTop: 4,
   },
   challengeLabel: {
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textSecondary,
-    marginBottom: 12,
+    marginBottom: 10,
     fontFamily: 'PlusJakartaSans_400Regular',
   },
   challengeCard: {
-    backgroundColor: Colors.blueLight,
+    backgroundColor: '#EFF6FF',
     borderLeftWidth: 4,
-    borderLeftColor: Colors.blueBorder,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 30,
+    borderLeftColor: '#3B82F6',
+    padding: 18,
+    borderRadius: 10,
+    marginBottom: 24,
   },
   challengeText: {
     fontSize: 16,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: 6,
+    marginBottom: 8,
     fontFamily: 'PlusJakartaSans_700Bold',
+    lineHeight: 22,
   },
   challengeSubtext: {
-    fontSize: 13,
-    color: Colors.textSecondary,
+    fontSize: 12,
+    color: '#6B7280',
     lineHeight: 18,
     fontFamily: 'PlusJakartaSans_400Regular',
   },
@@ -302,160 +313,174 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 350,
+    height: 400,
+    marginBottom: 16,
   },
   cameraOverlayTop: {
     position: 'absolute',
     top: 0,
-    left: 20,
-    right: 20,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     zIndex: 10,
+    paddingHorizontal: 4,
   },
   cameraOverlayBottom: {
     position: 'absolute',
-    bottom: 40, // leave space for instruction text
-    left: 20,
-    right: 20,
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     zIndex: 10,
+    paddingHorizontal: 4,
   },
   stepContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
   timerContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   stepText: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.textSecondary,
-    marginLeft: 10,
-    marginTop: 10,
+    marginLeft: 8,
+    fontFamily: 'PlusJakartaSans_400Regular',
   },
   timerText: {
     fontSize: 16,
-    color: '#8B4513', // Brownish color from image
-    fontWeight: '700',
-    marginRight: 10,
-    marginTop: 10,
+    color: '#D97706',
+    fontWeight: '600',
+    marginRight: 8,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   // Corner markers
   cornerTopLeft: {
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
+    width: 32,
+    height: 32,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
     borderColor: Colors.teal,
-    borderTopLeftRadius: 8,
+    borderTopLeftRadius: 4,
   },
   cornerTopRight: {
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderRightWidth: 2,
+    width: 32,
+    height: 32,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
     borderColor: Colors.teal,
-    borderTopRightRadius: 8,
+    borderTopRightRadius: 4,
   },
   cornerBottomLeft: {
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
+    width: 32,
+    height: 32,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
     borderColor: Colors.teal,
-    borderBottomLeftRadius: 8,
+    borderBottomLeftRadius: 4,
   },
   cornerBottomRight: {
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
+    width: 32,
+    height: 32,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
     borderColor: Colors.teal,
-    borderBottomRightRadius: 8,
+    borderBottomRightRadius: 4,
   },
-  cameraWrapper: {
-    width: width * 0.7,
-    height: width * 0.9,
-    borderRadius: 200, // Make it an oval
-    overflow: 'hidden',
+  faceContainer: {
+    width: width - 80,
+    height: 380,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  silhouetteWrapper: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  silhouetteImage: {
+    width: 200,
+    height: 280,
+    position: 'absolute',
+    zIndex: 1,
+  },
+  dashedOval: {
+    position: 'absolute',
+    width: 220,
+    height: 320,
+    borderRadius: 160,
+    borderWidth: 3,
+    borderColor: 'rgba(200,200,200,0.6)',
+    borderStyle: 'dashed',
   },
   camera: {
     width: '100%',
     height: '100%',
-  },
-  maskContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  maskOval: {
-    width: width * 0.65,
-    height: width * 0.85,
-    borderRadius: 200,
-    borderWidth: 3,
   },
   instructionContainer: {
-    position: 'absolute',
-    bottom: 0,
     alignItems: 'center',
     width: '100%',
-    height: 30,
+    minHeight: 30,
     justifyContent: 'center',
+    marginTop: 8,
   },
   instructionText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
   actionContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-    flex: 1,
-    justifyContent: 'center',
+    marginTop: 12,
+    marginBottom: 16,
   },
   recordButtonOuter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 4,
-    borderColor: Colors.text, // Black border
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 5,
+    borderColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   recordButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: 'transparent',
   },
   recordButtonInnerActive: {
-    backgroundColor: Colors.text, // Solid black inner when active or white depending on the interpretation, let's make it black
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   locationBanner: {
     flexDirection: 'row',
-    backgroundColor: Colors.yellowLight,
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 10,
+    backgroundColor: '#FEF9C3',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12,
     alignItems: 'flex-start',
   },
   locationIcon: {
-    marginTop: 2,
-    marginRight: 12,
+    marginTop: 1,
+    marginRight: 10,
+    flexShrink: 0,
   },
   locationText: {
     flex: 1,
-    fontSize: 13,
-    color: Colors.yellowDark,
+    fontSize: 12,
+    color: '#854D0E',
     lineHeight: 18,
     fontFamily: 'PlusJakartaSans_400Regular',
   },
