@@ -4,11 +4,14 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api/v1');
+
+  app.use(new LoggerMiddleware().use);
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -6,9 +6,11 @@ const swagger_1 = require("@nestjs/swagger");
 const app_module_1 = require("./app.module");
 const http_exception_filter_1 = require("./common/filters/http-exception.filter");
 const transform_interceptor_1 = require("./common/interceptors/transform.interceptor");
+const logger_middleware_1 = require("./common/middleware/logger.middleware");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.setGlobalPrefix('api/v1');
+    app.use(new logger_middleware_1.LoggerMiddleware().use);
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,
