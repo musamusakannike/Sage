@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "878755690918",
+    "project_id": "sage-clouds",
+    "storage_bucket": "sage-clouds.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878755690918:android:e7c9c8508beece9dc33767",
+        "android_client_info": {
+          "package_name": "org.cloudstech.sage"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsCbUvNBWcbHrsrllGdxqrxWTvBmh-Qwo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
