@@ -1,0 +1,22 @@
+import { Model } from 'mongoose';
+import { EmployeeDocument } from './schemas/employee.schema';
+import { EmployeeStatus } from '../common/enums';
+export interface ImportResult {
+    imported: number;
+    skipped: number;
+    warnings: string[];
+}
+export declare class EmployeesService {
+    private employeeModel;
+    constructor(employeeModel: Model<EmployeeDocument>);
+    findAll(orgId: string, status?: EmployeeStatus, search?: string, page?: number, limit?: number): Promise<{
+        data: EmployeeDocument[];
+        total: number;
+    }>;
+    findById(id: string, orgId: string): Promise<EmployeeDocument>;
+    updateStatus(id: string, orgId: string, status: EmployeeStatus): Promise<EmployeeDocument>;
+    importFromCsv(orgId: string, buffer: Buffer): Promise<ImportResult>;
+    updateDnaScore(id: string, score: number): Promise<void>;
+    maskAccountNumber(accountNumber: string): string;
+    maskPhone(phone: string): string;
+}

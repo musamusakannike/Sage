@@ -2,7 +2,6 @@
 node_modules/
 
 # Build output
-dist/
 build/
 *.tsbuildinfo
 
@@ -50,5 +49,4 @@ coverage/
 .temp/
 
 # NestJS specific
-dist/
 .nest/

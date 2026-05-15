@@ -1,18 +1,17 @@
-import 'reflect-metadata';
-import { NestFactory, Reflector } from '@nestjs/core';
-import { ValidationPipe, ClassSerializerInterceptor, INestApplication } from '@nestjs/common';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import * as express from 'express';
-import type { Request, Response } from 'express';
-import { AppModule } from '../src/app.module';
-import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
-import { TransformInterceptor } from '../src/common/interceptors/transform.interceptor';
+const express = require('express');
+require('reflect-metadata');
+const { NestFactory, Reflector } = require('@nestjs/core');
+const { ValidationPipe, ClassSerializerInterceptor } = require('@nestjs/common');
+const { ExpressAdapter } = require('@nestjs/platform-express');
+const { AppModule } = require('../dist/app.module');
+const { HttpExceptionFilter } = require('../dist/common/filters/http-exception.filter');
+const { TransformInterceptor } = require('../dist/common/interceptors/transform.interceptor');
 
-const server = express.default();
+const server = express();
 
-let cachedApp: INestApplication | null = null;
+let cachedApp = null;
 
-async function bootstrap(): Promise<INestApplication> {
+async function bootstrap() {
   if (cachedApp) return cachedApp;
 
   const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
@@ -47,7 +46,7 @@ async function bootstrap(): Promise<INestApplication> {
   return app;
 }
 
-export default async (req: Request, res: Response) => {
+module.exports = async (req, res) => {
   try {
     await bootstrap();
     server(req, res);
