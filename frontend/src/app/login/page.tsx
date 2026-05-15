@@ -12,7 +12,7 @@ import { decodeJwt, getApiErrorMessage } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
-  const setToken = useAuthStore((s) => s.setToken);
+  const setToken = useAuthStore((s: any) => s.setToken);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +31,7 @@ export default function LoginPage() {
       const user = decodeJwt(token);
       if (!user) throw new Error('Invalid token received.');
       setToken(token, user);
-      router.push('/dashboard');
+      router.push('/hr-admin/dashboard');
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
