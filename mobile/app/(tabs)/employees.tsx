@@ -7,6 +7,7 @@ import {
   TouchableOpacity, 
   ScrollView,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Plus } from 'lucide-react-native';
@@ -45,10 +46,15 @@ const Employees = () => {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchEmployees = useCallback(async (currentPage: number, currentSearch: string, currentFilter: FilterKey) => {
-    setIsLoading(true);
+  const fetchEmployees = useCallback(async (currentPage: number, currentSearch: string, currentFilter: FilterKey, isPullRefresh = false) => {
+    if (isPullRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     try {
       const filterOption = FILTER_OPTIONS.find((f) => f.key === currentFilter);
       const res = await employeesApi.list({
@@ -70,6 +76,7 @@ const Employees = () => {
       }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [show]);
 
@@ -91,6 +98,10 @@ const Employees = () => {
     setPage(1);
   };
 
+  const onRefresh = useCallback(() => {
+    fetchEmployees(page, search, activeFilter, true);
+  }, [fetchEmployees, page, search, activeFilter]);
+
   const filterLabel = (opt: FilterOption) => opt.label;
 
   const totalPages = Math.ceil(total / PAGE_LIMIT);
@@ -101,7 +112,13 @@ const Employees = () => {
         <Text style={styles.title}>Employees</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+        }
+      >
         {/* Search and Upload Section */}
         <View style={styles.searchRow}>
           <View style={styles.searchContainer}>

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, Building2, Shield, LogOut, ChevronRight } from 'lucide-react-native';
@@ -26,9 +27,14 @@ const Settings = () => {
   const { show } = useToastStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadProfile = useCallback(async () => {
-    setIsLoading(true);
+  const loadProfile = useCallback(async (isPullRefresh = false) => {
+    if (isPullRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     try {
       const res = await usersApi.getMe();
       setProfile(res.data.data);
@@ -38,11 +44,16 @@ const Settings = () => {
       }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [show]);
 
   useEffect(() => {
     loadProfile();
+  }, [loadProfile]);
+
+  const onRefresh = useCallback(() => {
+    loadProfile(true);
   }, [loadProfile]);
 
   const handleLogout = () => {
@@ -69,7 +80,13 @@ const Settings = () => {
         <Text style={styles.title}>Settings</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+        }
+      >
         {/* Profile Card */}
         <View style={styles.profileCard}>
           {isLoading ? (

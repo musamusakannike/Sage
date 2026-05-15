@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Clock, Snowflake, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -30,9 +30,14 @@ const Dashboard = () => {
   const [firstName, setFirstName] = useState<string>('');
   const [orgName, setOrgName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadDashboard = useCallback(async () => {
-    setIsLoading(true);
+  const loadDashboard = useCallback(async (isPullRefresh = false) => {
+    if (isPullRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     try {
       const [listRes, clearRes, pendingRes, frozenRes, scheduleRes, profileRes] = await Promise.allSettled([
         employeesApi.list({ page: 1, limit: 6 }),
@@ -63,6 +68,7 @@ const Dashboard = () => {
       }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [user]);
 
@@ -70,11 +76,18 @@ const Dashboard = () => {
     loadDashboard();
   }, [loadDashboard]);
 
+  const onRefresh = useCallback(() => {
+    loadDashboard(true);
+  }, [loadDashboard]);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, Clock, Send, Edit2, Check, X } from 'lucide-react-native';
@@ -31,6 +32,7 @@ const Schedule = () => {
   const { show } = useToastStore();
   const [schedule, setSchedule] = useState<PayrollSchedule | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingInvites, setIsSendingInvites] = useState(false);
@@ -38,8 +40,12 @@ const Schedule = () => {
   const [editDay, setEditDay] = useState('');
   const [editHours, setEditHours] = useState('');
 
-  const loadSchedule = useCallback(async () => {
-    setIsLoading(true);
+  const loadSchedule = useCallback(async (isPullRefresh = false) => {
+    if (isPullRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     try {
       const res = await payrollApi.getSchedule();
       setSchedule(res.data.data);
@@ -52,11 +58,16 @@ const Schedule = () => {
       }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [show]);
 
   useEffect(() => {
     loadSchedule();
+  }, [loadSchedule]);
+
+  const onRefresh = useCallback(() => {
+    loadSchedule(true);
   }, [loadSchedule]);
 
   const handleEditStart = () => {
@@ -134,7 +145,13 @@ const Schedule = () => {
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false} 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={Colors.primary} />
+          }
+        >
 
           {/* Countdown Card */}
           {disbursement && (
