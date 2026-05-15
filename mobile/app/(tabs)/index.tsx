@@ -1,22 +1,75 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Clock, Snowflake, ChevronRight } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants';
 import { StatCard } from '@/components/StatCard';
 import { PayrollCard } from '@/components/PayrollCard';
-import { EmployeeListItem, EmployeeStatus } from '@/components/EmployeeListItem';
+import { EmployeeListItem } from '@/components/EmployeeListItem';
+import { employeesApi } from '@/src/api/employees.api';
+import { payrollApi } from '@/src/api/payroll.api';
+import { usersApi } from '@/src/api/users.api';
+import { useAuthStore } from '@/src/store/auth.store';
+import type { Employee } from '@/src/types/employee.types';
+import type { PayrollSchedule } from '@/src/types/payroll.types';
 
-const EMPLOYEES: { name: string; role: string; status: EmployeeStatus; badgeCount: number; image?: string }[] = [
-  { name: 'Chukwuemeka Obi', role: 'Senior Accountant', status: 'Frozen', badgeCount: 28, image: 'https://i.pravatar.cc/150?u=1' },
-  { name: 'Chukwuemeka Obi', role: 'Senior Accountant', status: 'Review', badgeCount: 52 },
-  { name: 'Jasmine Albright', role: 'Project Manager', status: 'Review', badgeCount: 34 },
-  { name: 'Tristan Reed', role: 'Finance officer', status: 'Clear', badgeCount: 28 },
-  { name: 'Kamal Ahmed', role: 'Accountant', status: 'Clear', badgeCount: 45, image: 'https://i.pravatar.cc/150?u=2' },
-  { name: 'Mira Iyer', role: 'Revenue collector', status: 'Clear', badgeCount: 30, image: 'https://i.pravatar.cc/150?u=3' },
-];
+interface Stats {
+  verified: number;
+  pending: number;
+  frozen: number;
+}
 
 const Dashboard = () => {
+  const router = useRouter();
+  const { user } = useAuthStore();
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [stats, setStats] = useState<Stats>({ verified: 0, pending: 0, frozen: 0 });
+  const [schedule, setSchedule] = useState<PayrollSchedule | null>(null);
+  const [firstName, setFirstName] = useState<string>('');
+  const [orgName, setOrgName] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadDashboard = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [listRes, clearRes, pendingRes, frozenRes, scheduleRes, profileRes] = await Promise.allSettled([
+        employeesApi.list({ page: 1, limit: 6 }),
+        employeesApi.list({ status: 'CLEAR', limit: 1 }),
+        employeesApi.list({ status: 'PENDING', limit: 1 }),
+        employeesApi.list({ status: 'FROZEN', limit: 1 }),
+        payrollApi.getSchedule(),
+        usersApi.getMe(),
+      ]);
+
+      if (listRes.status === 'fulfilled') {
+        setEmployees(listRes.value.data.data.data);
+      }
+      setStats({
+        verified: clearRes.status === 'fulfilled' ? clearRes.value.data.data.total : 0,
+        pending: pendingRes.status === 'fulfilled' ? pendingRes.value.data.data.total : 0,
+        frozen: frozenRes.status === 'fulfilled' ? frozenRes.value.data.data.total : 0,
+      });
+      if (scheduleRes.status === 'fulfilled') {
+        setSchedule(scheduleRes.value.data.data);
+      }
+      if (profileRes.status === 'fulfilled') {
+        const profile = profileRes.value.data.data;
+        setFirstName(profile.name.split(' ')[0]);
+        setOrgName(profile.orgName);
+      } else {
+        setFirstName(user?.email?.split('@')[0] ?? '');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
@@ -25,8 +78,10 @@ const Dashboard = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hello, Amara 👋</Text>
-          <Text style={styles.location}>Lagos State Government · Ministry of Finance</Text>
+          <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
+          {orgName ? (
+            <Text style={styles.location}>{orgName}</Text>
+          ) : null}
         </View>
 
         {/* Stats Row */}
@@ -36,31 +91,41 @@ const Dashboard = () => {
           style={styles.statsScroll}
           contentContainerStyle={styles.statsContainer}
         >
-          <StatCard value="47" label="Verified" Icon={Check} color={Colors.verified} />
-          <StatCard value="8" label="Pending" Icon={Clock} color={Colors.pending} />
-          <StatCard value="3" label="Frozen" Icon={Snowflake} color={Colors.frozen} />
+          <StatCard value={stats.verified} label="Verified" Icon={Check} color={Colors.verified} />
+          <StatCard value={stats.pending} label="Pending" Icon={Clock} color={Colors.pending} />
+          <StatCard value={stats.frozen} label="Frozen" Icon={Snowflake} color={Colors.frozen} />
         </ScrollView>
 
         {/* Payroll Card */}
-        <PayrollCard />
+        <PayrollCard disbursementDay={schedule?.disbursementDay} />
 
         {/* Employees Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Employees</Text>
-          <TouchableOpacity style={styles.seeAll}>
+          <TouchableOpacity style={styles.seeAll} onPress={() => router.push('/(tabs)/employees')}>
             <Text style={styles.seeAllText}>See all</Text>
             <ChevronRight size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.employeeList}>
-          {EMPLOYEES.map((employee, index) => (
-            <EmployeeListItem 
-              key={index}
-              {...employee}
-            />
-          ))}
-        </View>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : (
+          <View style={styles.employeeList}>
+            {employees.map((employee) => (
+              <EmployeeListItem
+                key={employee._id}
+                id={employee._id}
+                name={employee.name}
+                role={employee.roleTitle}
+                status={employee.status}
+                dnaScore={employee.dnaScore}
+              />
+            ))}
+          </View>
+        )}
         
         {/* Bottom Padding for floating tab bar */}
         <View style={{ height: 100 }} />
@@ -127,5 +192,9 @@ const styles = StyleSheet.create({
   },
   employeeList: {
     gap: 4,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
   },
 });

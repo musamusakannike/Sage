@@ -1,40 +1,143 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   StyleSheet, 
   Text, 
   View, 
   ScrollView, 
   TouchableOpacity,
-  Dimensions
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, X, Check } from 'lucide-react-native';
-import { Image } from 'expo-image';
+import { ArrowLeft } from 'lucide-react-native';
 import { Colors } from '@/constants';
+import { employeesApi } from '@/src/api/employees.api';
+import { useToastStore } from '@/src/store/toast.store';
+import type { Employee } from '@/src/types/employee.types';
+import axios from 'axios';
 
-const { width } = Dimensions.get('window');
+function getRiskLabel(score: number | null): { label: string; color: string } {
+  if (score === null) return { label: 'UNVERIFIED', color: Colors.textSecondary };
+  if (score < 40) return { label: 'HIGH RISK', color: Colors.risk.high };
+  if (score < 70) return { label: 'MEDIUM RISK', color: Colors.risk.medium };
+  return { label: 'LOW RISK', color: Colors.risk.low };
+}
 
-const ScoreRow = ({ label, score, total, color, status }: any) => (
-  <View style={styles.scoreRow}>
-    <Text style={styles.scoreLabel}>{label}</Text>
-    <View style={styles.scoreValueContainer}>
-      <Text style={[styles.scoreValue, { color }]}>{score} / {total}</Text>
-      <View style={styles.progressBarBg}>
-        <View style={[styles.progressBarFill, { width: `${(score/total)*100}%`, backgroundColor: color }]} />
-      </View>
-      {status === 'success' ? (
-        <Check size={16} color="#3A6E57" />
-      ) : (
-        <X size={16} color="#D43A3A" />
-      )}
-    </View>
-  </View>
-);
+function maskAccount(account: string): string {
+  if (account.length < 4) return '****';
+  return `**** **** ${account.slice(-4)}`;
+}
+
+function maskPhone(phone: string): string {
+  if (phone.length < 7) return '***';
+  return `${phone.slice(0, 3)}****${phone.slice(-4)}`;
+}
+
+function getScoreColor(score: number | null): string {
+  if (score === null) return Colors.textSecondary;
+  if (score < 40) return Colors.risk.high;
+  if (score < 70) return Colors.risk.medium;
+  return Colors.risk.low;
+}
 
 const EmployeeDetails = () => {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { show } = useToastStore();
+
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<'hold' | 'freeze' | null>(null);
+
+  const loadEmployee = useCallback(async () => {
+    if (!id) return;
+    setIsLoading(true);
+    try {
+      const res = await employeesApi.getById(id);
+      setEmployee(res.data.data);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message;
+        const displayMsg = Array.isArray(msg) ? msg[0] : (msg ?? 'Failed to load employee.');
+        show({ type: 'error', title: 'Error', message: displayMsg });
+      } else {
+        show({ type: 'error', title: 'Network error', message: 'Unable to reach the server.' });
+      }
+      router.back();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, show, router]);
+
+  useEffect(() => {
+    loadEmployee();
+  }, [loadEmployee]);
+
+  const handleAction = (type: 'hold' | 'freeze') => {
+    const label = type === 'hold' ? 'Hold Payment' : 'Freeze Payment';
+    const message = type === 'hold'
+      ? 'This will set the employee status to Pending and pause payment.'
+      : 'This will freeze the employee\'s payment until manually cleared.';
+
+    Alert.alert(label, message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Confirm',
+        style: 'destructive',
+        onPress: async () => {
+          if (!id) return;
+          setActionLoading(type);
+          try {
+            const res = type === 'hold'
+              ? await employeesApi.hold(id)
+              : await employeesApi.freeze(id);
+            setEmployee(res.data.data);
+            show({ type: 'success', title: 'Done', message: `Employee payment ${type === 'hold' ? 'held' : 'frozen'} successfully.` });
+          } catch (err) {
+            if (axios.isAxiosError(err)) {
+              const msg = err.response?.data?.message;
+              const displayMsg = Array.isArray(msg) ? msg[0] : (msg ?? 'Action failed.');
+              show({ type: 'error', title: 'Error', message: displayMsg });
+            } else {
+              show({ type: 'error', title: 'Network error', message: 'Unable to reach the server.' });
+            }
+          } finally {
+            setActionLoading(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color={Colors.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!employee) return null;
+
+  const statusKey = employee.status.toLowerCase() as keyof typeof Colors.status;
+  const statusStyles = Colors.status[statusKey] || Colors.status.pending;
+  const displayStatus = employee.status.charAt(0) + employee.status.slice(1).toLowerCase();
+  const { label: riskLabel, color: riskColor } = getRiskLabel(employee.dnaScore);
+  const scoreColor = getScoreColor(employee.dnaScore);
+
+  const verifiedDate = employee.lastVerifiedAt
+    ? new Date(employee.lastVerifiedAt).toLocaleDateString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      })
+    : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -48,14 +151,15 @@ const EmployeeDetails = () => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Profile Section */}
         <View style={styles.profileSection}>
-          <Image 
-            source={{ uri: 'https://i.pravatar.cc/150?u=1' }} 
-            style={styles.avatar} 
-          />
-          <Text style={styles.name}>Chukwuemeka Obi</Text>
-          <Text style={styles.role}>Senior Accountant · ID #LAG-00214</Text>
-          <View style={[styles.statusBadge, { backgroundColor: Colors.status.frozen.bg }]}>
-            <Text style={[styles.statusText, { color: Colors.status.frozen.text }]}>Frozen</Text>
+          <View style={styles.initialsAvatar}>
+            <Text style={styles.initialsText}>
+              {employee.name.split(' ').map((n) => n[0]).join('')}
+            </Text>
+          </View>
+          <Text style={styles.name}>{employee.name}</Text>
+          <Text style={styles.role}>{employee.roleTitle}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: statusStyles.bg }]}>
+            <Text style={[styles.statusText, { color: statusStyles.text }]}>{displayStatus}</Text>
           </View>
         </View>
 
@@ -64,69 +168,82 @@ const EmployeeDetails = () => {
           <Text style={styles.sectionTitle}>Identity</Text>
           <View style={styles.identityRow}>
             <Text style={styles.identityLabel}>Account No.</Text>
-            <Text style={styles.identityValue}>**** **** 7734</Text>
+            <Text style={styles.identityValue}>{maskAccount(employee.accountNumber)}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.identityRow}>
             <Text style={styles.identityLabel}>Phone number</Text>
-            <Text style={styles.identityValue}>080****2261</Text>
+            <Text style={styles.identityValue}>{maskPhone(employee.phone)}</Text>
           </View>
+          {employee.email && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.identityRow}>
+                <Text style={styles.identityLabel}>Email</Text>
+                <Text style={styles.identityValue}>{employee.email}</Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* DNA Score Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>June 2026 - DNA Score</Text>
+          <Text style={styles.sectionTitle}>DNA Score</Text>
           <View style={styles.dnaScoreContainer}>
-            <Text style={styles.dnaScoreValue}>28</Text>
+            <Text style={[styles.dnaScoreValue, { color: scoreColor }]}>
+              {employee.dnaScore ?? '—'}
+            </Text>
             <View>
-              <Text style={[styles.riskLevel, { color: Colors.risk.high }]}>HIGH RISK</Text>
-              <Text style={styles.verificationTime}>Verified 15 May 2026, 07:43</Text>
-              <Text style={styles.location}>Lagos, Nigeria</Text>
+              <Text style={[styles.riskLevel, { color: riskColor }]}>{riskLabel}</Text>
+              {verifiedDate ? (
+                <Text style={styles.verificationTime}>Verified {verifiedDate}</Text>
+              ) : (
+                <Text style={styles.verificationTime}>Not yet verified</Text>
+              )}
             </View>
           </View>
 
-          <View style={styles.scoreList}>
-            <ScoreRow label="Liveness Match" score={8} total={30} color="#D43A3A" />
-            <ScoreRow label="Geolocation Cluster" score={0} total={20} color="#D43A3A" />
-            <ScoreRow label="Device Fingerprint" score={10} total={20} color="#B45309" />
-            <ScoreRow label="Check-in Time" score={10} total={15} color="#3A6E57" status="success" />
-            <ScoreRow label="Post-pay velocity" score={0} total={15} color="#D43A3A" />
-          </View>
-        </View>
-
-        {/* Verification History */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Verification History</Text>
-          <View style={styles.historyRow}>
-            <Text style={styles.historyMonth}>May 2026</Text>
-            <View style={styles.historyRight}>
-              <View style={styles.smallScoreBadge}><Text style={styles.smallScoreText}>28</Text></View>
-              <View style={[styles.miniStatusBadge, { backgroundColor: Colors.status.frozen.bg }]}><Text style={[styles.miniStatusText, { color: Colors.status.frozen.text }]}>Frozen</Text></View>
+          {employee.dnaScore !== null && (
+            <View style={styles.scoreBarContainer}>
+              <View style={styles.scoreBarBg}>
+                <View
+                  style={[
+                    styles.scoreBarFill,
+                    {
+                      width: `${Math.min(employee.dnaScore, 100)}%`,
+                      backgroundColor: scoreColor,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.scoreBarLabel}>{employee.dnaScore} / 100</Text>
             </View>
-          </View>
-          <View style={styles.historyRow}>
-            <Text style={styles.historyMonth}>Apr 2026</Text>
-            <View style={styles.historyRight}>
-              <View style={styles.smallScoreBadge}><Text style={styles.smallScoreText}>52</Text></View>
-              <View style={[styles.miniStatusBadge, { backgroundColor: Colors.status.review.bg }]}><Text style={[styles.miniStatusText, { color: Colors.status.review.text }]}>Review</Text></View>
-            </View>
-          </View>
-          <View style={styles.historyRow}>
-            <Text style={styles.historyMonth}>Mar 2026</Text>
-            <View style={styles.historyRight}>
-              <View style={styles.smallScoreBadgeGreen}><Text style={styles.smallScoreTextGreen}>28</Text></View>
-              <View style={[styles.miniStatusBadge, { backgroundColor: Colors.status.approved.bg }]}><Text style={[styles.miniStatusText, { color: Colors.status.approved.text }]}>Approved</Text></View>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: Colors.hold.bg }]}>
-            <Text style={[styles.actionButtonText, { color: Colors.hold.text }]}>Hold Payment</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: Colors.hold.bg, opacity: actionLoading ? 0.7 : 1 }]}
+            onPress={() => handleAction('hold')}
+            disabled={actionLoading !== null}
+          >
+            {actionLoading === 'hold' ? (
+              <ActivityIndicator size="small" color={Colors.hold.text} />
+            ) : (
+              <Text style={[styles.actionButtonText, { color: Colors.hold.text }]}>Hold Payment</Text>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: Colors.freeze.bg }]}>
-            <Text style={[styles.actionButtonText, { color: Colors.freeze.text }]}>Freeze Payment</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: Colors.freeze.bg, opacity: actionLoading ? 0.7 : 1 }]}
+            onPress={() => handleAction('freeze')}
+            disabled={actionLoading !== null}
+          >
+            {actionLoading === 'freeze' ? (
+              <ActivityIndicator size="small" color={Colors.freeze.text} />
+            ) : (
+              <Text style={[styles.actionButtonText, { color: Colors.freeze.text }]}>Freeze Payment</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -157,11 +274,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  avatar: {
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  initialsAvatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  initialsText: {
+    fontSize: 32,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: Colors.text,
   },
   name: {
     fontSize: 22,
@@ -221,7 +351,6 @@ const styles = StyleSheet.create({
   dnaScoreValue: {
     fontSize: 64,
     fontFamily: 'PlusJakartaSans_700Bold',
-    color: '#D43A3A',
   },
   riskLevel: {
     fontSize: 16,
@@ -233,10 +362,24 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: 'PlusJakartaSans_400Regular',
   },
-  location: {
-    fontSize: 13,
+  scoreBarContainer: {
+    marginTop: 4,
+  },
+  scoreBarBg: {
+    height: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  scoreBarFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  scoreBarLabel: {
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_500Medium',
     color: Colors.textSecondary,
-    fontFamily: 'PlusJakartaSans_400Regular',
   },
   scoreList: {
     backgroundColor: '#FCFCFC',

@@ -1,27 +1,102 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { FileText, Download, AlertCircle, CheckCircle2 } from 'lucide-react-native';
 import { Colors } from '@/constants';
 import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import Papa from 'papaparse';
+import { employeesApi } from '@/src/api/employees.api';
+import { useToastStore } from '@/src/store/toast.store';
+import axios from 'axios';
 
 interface UploadBottomSheetProps {
   visible: boolean;
   onClose: () => void;
+  onImportSuccess?: () => void;
 }
 
-export const UploadBottomSheet = ({ visible, onClose }: UploadBottomSheetProps) => {
+interface PickedFile {
+  uri: string;
+  name: string;
+  mimeType?: string;
+}
+
+interface PreviewRow {
+  Name?: string;
+  Role?: string;
+  'Account Number'?: string;
+  [key: string]: string | undefined;
+}
+
+export const UploadBottomSheet = ({ visible, onClose, onImportSuccess }: UploadBottomSheetProps) => {
+  const { show } = useToastStore();
   const [step, setStep] = useState<'upload' | 'preview' | 'success'>('upload');
+  const [pickedFile, setPickedFile] = useState<PickedFile | null>(null);
+  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [totalRows, setTotalRows] = useState(0);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleClose = () => {
     onClose();
-    setTimeout(() => setStep('upload'), 300);
+    setTimeout(() => {
+      setStep('upload');
+      setPickedFile(null);
+      setPreviewRows([]);
+      setTotalRows(0);
+      setImportResult(null);
+    }, 300);
   };
 
-  const handleImport = () => {
-    setStep('success');
-    setTimeout(() => {
-      handleClose();
-    }, 2000);
+  const handlePickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      const content = await FileSystem.readAsStringAsync(asset.uri);
+      const parsed = Papa.parse<PreviewRow>(content, { header: true, skipEmptyLines: true });
+
+      setPickedFile({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType ?? 'text/csv' });
+      setPreviewRows(parsed.data.slice(0, 3));
+      setTotalRows(parsed.data.length);
+      setStep('preview');
+    } catch {
+      show({ type: 'error', title: 'File error', message: 'Could not read the selected file.' });
+    }
+  };
+
+  const handleImport = async () => {
+    if (!pickedFile) return;
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', { uri: pickedFile.uri, name: pickedFile.name, type: pickedFile.mimeType } as any);
+      const res = await employeesApi.importCsv(formData);
+      const result = res.data.data;
+      setImportResult(result);
+      setStep('success');
+      onImportSuccess?.();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message;
+        const displayMsg = Array.isArray(msg) ? msg[0] : (msg ?? 'Import failed. Please try again.');
+        show({ type: 'error', title: 'Import failed', message: displayMsg });
+      } else {
+        show({ type: 'error', title: 'Network error', message: 'Unable to reach the server.' });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const maskAccount = (account?: string) => {
+    if (!account || account.length < 4) return '••••';
+    return `${account.slice(0, 3)}••••${account.slice(-4)}`;
   };
 
   return (
@@ -44,7 +119,11 @@ export const UploadBottomSheet = ({ visible, onClose }: UploadBottomSheetProps) 
               >
                 <CheckCircle2 size={80} color={Colors.primary} />
                 <Text style={styles.successTitle}>Import Successful</Text>
-                <Text style={styles.successSubtitle}>56 employees have been added to your roster.</Text>
+                <Text style={styles.successSubtitle}>
+                  {importResult
+                    ? `${importResult.imported} employees added${importResult.skipped > 0 ? `, ${importResult.skipped} skipped` : ''}.`
+                    : 'Employees have been added to your roster.'}
+                </Text>
               </Animated.View>
             ) : (
               <View style={{ flex: 1 }}>
@@ -60,14 +139,18 @@ export const UploadBottomSheet = ({ visible, onClose }: UploadBottomSheetProps) 
 
                   <TouchableOpacity 
                     style={styles.uploadArea} 
-                    onPress={() => setStep('preview')}
+                    onPress={handlePickFile}
                     activeOpacity={0.7}
                   >
                     <View style={styles.folderIcon}>
                       <Text style={{ fontSize: 40 }}>📂</Text>
                     </View>
-                    <Text style={styles.uploadTitle}>Choose a CSV file</Text>
-                    <Text style={styles.uploadSubtitle}>Tap to browse your files</Text>
+                    <Text style={styles.uploadTitle}>
+                      {pickedFile ? pickedFile.name : 'Choose a CSV file'}
+                    </Text>
+                    <Text style={styles.uploadSubtitle}>
+                      {pickedFile ? `${totalRows} rows found` : 'Tap to browse your files'}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.downloadTemplate}>
@@ -75,15 +158,15 @@ export const UploadBottomSheet = ({ visible, onClose }: UploadBottomSheetProps) 
                     <Text style={styles.downloadText}>Download template CSV</Text>
                   </TouchableOpacity>
 
-                  {step === 'preview' && (
+                  {step === 'preview' && previewRows.length > 0 && (
                     <Animated.View entering={FadeIn} style={styles.previewContainer}>
                       <View style={styles.fileHeader}>
                         <View style={styles.fileIconBox}>
                           <FileText size={20} color="#4F46E5" />
                         </View>
                         <View>
-                          <Text style={styles.fileName}>employees_may2026.csv</Text>
-                          <Text style={styles.fileRows}>58 rows found</Text>
+                          <Text style={styles.fileName}>{pickedFile?.name}</Text>
+                          <Text style={styles.fileRows}>{totalRows} rows found</Text>
                         </View>
                       </View>
 
@@ -93,40 +176,50 @@ export const UploadBottomSheet = ({ visible, onClose }: UploadBottomSheetProps) 
                           <Text style={[styles.columnLabel, { flex: 1.5 }]}>ROLE</Text>
                           <Text style={[styles.columnLabel, { flex: 1.5 }]}>ACCOUNT</Text>
                         </View>
-                        <View style={styles.tableRow}>
-                          <Text style={[styles.cellText, { flex: 1.2 }]}>C. Obi</Text>
-                          <Text style={[styles.cellText, { flex: 1.5 }]}>Sr. Accountant</Text>
-                          <Text style={[styles.cellText, { flex: 1.5 }]}>012••••7734</Text>
-                        </View>
-                        <View style={styles.tableRow}>
-                          <Text style={[styles.cellText, { flex: 1.2 }]}>C. Obi</Text>
-                          <Text style={[styles.cellText, { flex: 1.5 }]}>Budget Analyst</Text>
-                          <Text style={[styles.cellText, { flex: 1.5 }]}>012••••7734</Text>
-                        </View>
-                        <View style={styles.tableRow}>
-                          <Text style={[styles.cellText, { flex: 1.2 }]}>C. Obi</Text>
-                          <Text style={[styles.cellText, { flex: 1.5 }]}>Finance Officer</Text>
-                          <Text style={[styles.cellText, { flex: 1.5 }]}>012••••7734</Text>
-                        </View>
+                        {previewRows.map((row, i) => (
+                          <View key={i} style={styles.tableRow}>
+                            <Text style={[styles.cellText, { flex: 1.2 }]} numberOfLines={1}>
+                              {row['Name']?.split(' ').map((n) => n[0]).join('. ') ?? '—'}
+                            </Text>
+                            <Text style={[styles.cellText, { flex: 1.5 }]} numberOfLines={1}>
+                              {row['Role'] ?? '—'}
+                            </Text>
+                            <Text style={[styles.cellText, { flex: 1.5 }]} numberOfLines={1}>
+                              {maskAccount(row['Account Number'])}
+                            </Text>
+                          </View>
+                        ))}
                       </View>
 
-                      <View style={styles.alertBox}>
-                        <AlertCircle size={16} color="#B45309" />
-                        <Text style={styles.alertText}>2 rows have missing data and will be skipped</Text>
-                      </View>
+                      {totalRows > 3 && (
+                        <View style={styles.alertBox}>
+                          <AlertCircle size={16} color="#B45309" />
+                          <Text style={styles.alertText}>
+                            Showing 3 of {totalRows} rows. Duplicates will be skipped automatically.
+                          </Text>
+                        </View>
+                      )}
                     </Animated.View>
                   )}
 
                   <View style={styles.buttonContainer}>
                     <TouchableOpacity 
-                      style={[styles.primaryButton, { backgroundColor: Colors.primary }]}
-                      onPress={handleImport}
+                      style={[styles.primaryButton, { backgroundColor: Colors.primary, opacity: isLoading ? 0.8 : 1 }]}
+                      onPress={step === 'upload' ? handlePickFile : handleImport}
+                      disabled={isLoading}
                     >
-                      <Text style={styles.primaryButtonText}>Import 56 Employees</Text>
+                      {isLoading ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Text style={styles.primaryButtonText}>
+                          {step === 'preview' ? `Import ${totalRows} Employees` : 'Choose File'}
+                        </Text>
+                      )}
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.cancelButton}
                       onPress={handleClose}
+                      disabled={isLoading}
                     >
                       <Text style={styles.cancelButtonText}>Cancel</Text>
                     </TouchableOpacity>

@@ -2,18 +2,37 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Colors } from '@/constants';
 
-export const PayrollCard = () => {
+interface PayrollCardProps {
+  disbursementDay?: number;
+}
+
+function getNextDisbursement(disbursementDay: number): { daysUntil: number; dateString: string } {
+  const now = new Date();
+  let next = new Date(now.getFullYear(), now.getMonth(), disbursementDay);
+  if (next <= now) {
+    next = new Date(now.getFullYear(), now.getMonth() + 1, disbursementDay);
+  }
+  const daysUntil = Math.max(0, Math.ceil((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const dateString = next.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  return { daysUntil, dateString };
+}
+
+export const PayrollCard = ({ disbursementDay }: PayrollCardProps) => {
+  const { daysUntil, dateString } = disbursementDay
+    ? getNextDisbursement(disbursementDay)
+    : { daysUntil: '—', dateString: 'Loading...' };
+
   return (
     <View style={styles.card}>
       <View style={styles.leftContent}>
         <Text style={styles.label}>Next payroll in</Text>
         <View style={styles.daysContainer}>
-          <Text style={styles.daysValue}>5</Text>
+          <Text style={styles.daysValue}>{daysUntil}</Text>
           <Text style={styles.daysText}>days</Text>
         </View>
       </View>
       <View style={styles.rightContent}>
-        <Text style={styles.date}>25 June, 2026</Text>
+        <Text style={styles.date}>{dateString}</Text>
         <View style={styles.statusContainer}>
           <View style={styles.dot} />
           <Text style={styles.statusText}>Scheduled</Text>

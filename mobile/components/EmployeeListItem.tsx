@@ -4,21 +4,22 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants';
 
-export type EmployeeStatus = 'Frozen' | 'Review' | 'Clear' | 'Pending' | 'Approved';
+export type EmployeeStatus = 'CLEAR' | 'REVIEW' | 'FROZEN' | 'PENDING' | 'FLAGGED';
 
 interface EmployeeListItemProps {
   name: string;
   role: string;
   status: EmployeeStatus;
-  badgeCount: number;
+  dnaScore: number | null;
   image?: string;
   id?: string;
 }
 
-export const EmployeeListItem = ({ name, role, status, badgeCount, image, id = '1' }: EmployeeListItemProps) => {
+export const EmployeeListItem = ({ name, role, status, dnaScore, image, id = '1' }: EmployeeListItemProps) => {
   const router = useRouter();
   const statusKey = status.toLowerCase() as keyof typeof Colors.status;
   const statusStyles = Colors.status[statusKey] || Colors.status.pending;
+  const displayStatus = status.charAt(0) + status.slice(1).toLowerCase();
 
   return (
     <TouchableOpacity 
@@ -43,11 +44,13 @@ export const EmployeeListItem = ({ name, role, status, badgeCount, image, id = '
       </View>
       
       <View style={styles.rightSection}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badgeCount}</Text>
-        </View>
+        {dnaScore !== null && dnaScore !== undefined && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{dnaScore}</Text>
+          </View>
+        )}
         <View style={[styles.statusBadge, { backgroundColor: statusStyles.bg }]}>
-          <Text style={[styles.statusText, { color: statusStyles.text }]}>{status}</Text>
+          <Text style={[styles.statusText, { color: statusStyles.text }]}>{displayStatus}</Text>
         </View>
       </View>
     </TouchableOpacity>
