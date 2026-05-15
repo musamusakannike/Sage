@@ -91,10 +91,18 @@ const Dashboard = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
-          {orgName ? (
-            <Text style={styles.location}>{orgName}</Text>
-          ) : null}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
+            {orgName ? (
+              <Text style={styles.location}>{orgName}</Text>
+            ) : null}
+          </View>
+          <TouchableOpacity 
+            style={{ backgroundColor: Colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, justifyContent: 'center' }}
+            onPress={() => router.push('/verify')}
+          >
+            <Text style={{ color: '#fff', fontSize: 13, fontFamily: 'PlusJakartaSans_600SemiBold' }}>Verify</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Stats Row */}
@@ -160,6 +168,9 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   greeting: {
     fontSize: 28,
