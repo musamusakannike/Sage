@@ -33,6 +33,7 @@ import { Mail, ArrowRight, ArrowLeft, RefreshCw, CheckCircle2, AlertCircle, Info
 import { Colors } from '@/constants';
 import { authApi } from '@/src/api/auth.api';
 import { useAuthStore } from '@/src/store/auth.store';
+import { decodeToken } from '@/src/utils/jwt.utils';
 import axios from 'axios';
 
 const { width } = Dimensions.get('window');
@@ -250,6 +251,21 @@ export default function Login() {
     try {
       const res = await authApi.verifyOtp(email.trim().toLowerCase(), codeToVerify);
       const token = res.data.data.access_token;
+
+      const payload = decodeToken(token);
+      if (!payload || payload.role !== 'employee') {
+        setHasError(true);
+        setCode('');
+        setFocusedIndex(0);
+        setTimeout(() => hiddenInputRef.current?.focus(), 100);
+        setOtpBanner({
+          type: 'error',
+          message: 'Access denied. This app is for employees only.',
+        });
+        setOtpLoading(false);
+        return;
+      }
+
       login(token);
       router.replace('/home');
     } catch (err) {
