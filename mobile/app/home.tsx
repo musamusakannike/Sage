@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -32,6 +32,9 @@ import {
   AlertCircle,
   ChevronRight,
   Circle,
+  LogOut,
+  Mail,
+  Briefcase,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -66,9 +69,13 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showProfileSheet, setShowProfileSheet] = useState(false);
 
   const translateY = useSharedValue(height);
   const backdropOpacity = useSharedValue(0);
+
+  const profileTranslateY = useSharedValue(height);
+  const profileBackdropOpacity = useSharedValue(0);
 
   const loadProfile = useCallback(async (isPullRefresh = false) => {
     if (isPullRefresh) {
@@ -102,9 +109,28 @@ export default function HomeScreen() {
     }
   }, [showModal, translateY, backdropOpacity]);
 
+  useEffect(() => {
+    if (showProfileSheet) {
+      profileTranslateY.value = withSpring(0, { damping: 25, stiffness: 300 });
+      profileBackdropOpacity.value = withTiming(0.5, { duration: 200 });
+    } else {
+      profileTranslateY.value = withSpring(height, { damping: 25, stiffness: 300 });
+      profileBackdropOpacity.value = withTiming(0, { duration: 200 });
+    }
+  }, [showProfileSheet, profileTranslateY, profileBackdropOpacity]);
+
   const onRefresh = useCallback(() => {
     loadProfile(true);
   }, [loadProfile]);
+
+  const handleLogout = () => {
+    setShowProfileSheet(false);
+    // Small delay to let the sheet close before logging out
+    setTimeout(() => {
+      logout();
+      router.replace('/login');
+    }, 300);
+  };
 
   const handleVerify = () => {
     setShowModal(false);
@@ -119,6 +145,14 @@ export default function HomeScreen() {
     transform: [{ translateY: translateY.value }],
   }));
 
+  const profileBackdropStyle = useAnimatedStyle(() => ({
+    opacity: profileBackdropOpacity.value,
+  }));
+
+  const profileSheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: profileTranslateY.value }],
+  }));
+
   const gesture = Gesture.Pan()
     .onUpdate((event) => {
       if (event.translationY > 0) {
@@ -130,6 +164,20 @@ export default function HomeScreen() {
         setShowModal(false);
       } else {
         translateY.value = withSpring(0, { damping: 25, stiffness: 300 });
+      }
+    });
+
+  const profileGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      if (event.translationY > 0) {
+        profileTranslateY.value = event.translationY;
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > 100 || event.velocityY > 500) {
+        setShowProfileSheet(false);
+      } else {
+        profileTranslateY.value = withSpring(0, { damping: 25, stiffness: 300 });
       }
     });
 
@@ -155,6 +203,13 @@ export default function HomeScreen() {
         <View style={styles.walletCard}>
           <View style={styles.walletHeader}>
             <Text style={styles.walletBrand}>Sage Wallet • Lagos State Government</Text>
+            <TouchableOpacity
+              style={styles.profileIconButton}
+              onPress={() => setShowProfileSheet(true)}
+              activeOpacity={0.8}
+            >
+              <User size={18} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
           <View style={styles.balanceContainer}>
             <Text style={styles.balanceText}>₦0.00</Text>
@@ -292,6 +347,80 @@ export default function HomeScreen() {
                   <Text style={styles.dismissButtonText}>I'll do this later</Text>
                 </TouchableOpacity>
               </View>
+            </Animated.View>
+          </GestureDetector>
+        </View>
+      )}
+      {/* Profile Bottom Sheet */}
+      {showProfileSheet && (
+        <View style={styles.modalOverlay} pointerEvents="box-none">
+          <Animated.View style={[styles.backdrop, profileBackdropStyle]} pointerEvents="auto">
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowProfileSheet(false)} />
+          </Animated.View>
+
+          <GestureDetector gesture={profileGesture}>
+            <Animated.View style={[styles.modalContainer, profileSheetStyle]}>
+              <View style={styles.modalHandle} />
+
+              {/* Profile Header */}
+              <View style={styles.profileSheetHeader}>
+                <View style={styles.profileAvatar}>
+                  <Text style={styles.profileAvatarText}>
+                    {profile?.name ? profile.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'CO'}
+                  </Text>
+                </View>
+                <View style={styles.profileSheetInfo}>
+                  <Text style={styles.profileSheetName}>{profile?.name || 'Chukwuemeka Obi'}</Text>
+                  <Text style={styles.profileSheetRole}>{profile?.role || 'Employee'}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.profileCloseButton}
+                  onPress={() => setShowProfileSheet(false)}
+                >
+                  <X size={18} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.profileDivider} />
+
+              {/* Profile Details */}
+              <View style={styles.profileDetailsList}>
+                <View style={styles.profileDetailItem}>
+                  <View style={styles.profileDetailIcon}>
+                    <Mail size={16} color={Colors.primary} />
+                  </View>
+                  <View style={styles.profileDetailText}>
+                    <Text style={styles.profileDetailLabel}>Email</Text>
+                    <Text style={styles.profileDetailValue}>{profile?.email || '—'}</Text>
+                  </View>
+                </View>
+                <View style={styles.profileDetailItem}>
+                  <View style={styles.profileDetailIcon}>
+                    <Briefcase size={16} color={Colors.primary} />
+                  </View>
+                  <View style={styles.profileDetailText}>
+                    <Text style={styles.profileDetailLabel}>Organisation</Text>
+                    <Text style={styles.profileDetailValue}>{profile?.orgName || '—'}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.profileDivider} />
+
+              {/* Logout Button */}
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+                activeOpacity={0.8}
+              >
+                <View style={styles.logoutIconContainer}>
+                  <LogOut size={18} color={Colors.frozen} />
+                </View>
+                <Text style={styles.logoutText}>Log out</Text>
+                <ChevronRight size={16} color={Colors.frozen} />
+              </TouchableOpacity>
             </Animated.View>
           </GestureDetector>
         </View>
@@ -754,5 +883,120 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'PlusJakartaSans_500Medium',
     color: Colors.textSecondary,
+  },
+
+  // Profile icon on wallet card
+  profileIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+
+  // Profile bottom sheet
+  profileSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginBottom: 20,
+  },
+  profileAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  profileAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: 'PlusJakartaSans_700Bold',
+  },
+  profileSheetInfo: {
+    flex: 1,
+  },
+  profileSheetName: {
+    fontSize: 17,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  profileSheetRole: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: Colors.textSecondary,
+    textTransform: 'capitalize',
+  },
+  profileCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileDivider: {
+    height: 1,
+    backgroundColor: '#F1F1F1',
+    marginBottom: 20,
+  },
+  profileDetailsList: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  profileDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  profileDetailIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#F0F7F4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileDetailText: {
+    flex: 1,
+  },
+  profileDetailLabel: {
+    fontSize: 12,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+  profileDetailValue: {
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: Colors.text,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 16,
+    padding: 16,
+  },
+  logoutIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FDECEC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoutText: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    color: Colors.frozen,
   },
 });
