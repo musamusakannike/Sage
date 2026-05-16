@@ -1,4 +1,4 @@
-export type UserRole = 'hr_admin' | 'auditor';
+export type UserRole = 'hr_admin' | 'auditor' | 'employee';
 
 export interface LoginPayload {
   email: string;
