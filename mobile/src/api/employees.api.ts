@@ -3,6 +3,9 @@ import type { ApiResponse } from '../types/api.types';
 import type { Employee, EmployeeListResponse, ServerEmployeeStatus } from '../types/employee.types';
 
 export const employeesApi = {
+  getMe: () =>
+    apiClient.get<ApiResponse<Employee>>('/employees/me'),
+
   list: (params?: {
     status?: ServerEmployeeStatus;
     search?: string;

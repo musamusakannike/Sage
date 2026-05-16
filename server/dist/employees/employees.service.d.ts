@@ -15,6 +15,7 @@ export declare class EmployeesService {
         total: number;
     }>;
     findById(id: string, orgId: string): Promise<EmployeeDocument>;
+    findByEmail(email: string): Promise<EmployeeDocument | null>;
     updateStatus(id: string, orgId: string, status: EmployeeStatus): Promise<EmployeeDocument>;
     updateStatusById(id: string, status: EmployeeStatus): Promise<EmployeeDocument>;
     importFromCsv(orgId: string, buffer: Buffer): Promise<ImportResult>;

@@ -34,6 +34,8 @@ import {
   LogOut,
   Mail,
   Briefcase,
+  Eye,
+  EyeOff,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -45,9 +47,11 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Colors } from '@/constants';
 import { usersApi } from '@/src/api/users.api';
+import { employeesApi } from '@/src/api/employees.api';
 import { useAuthStore } from '@/src/store/auth.store';
 import { useToastStore } from '@/src/store/toast.store';
 import { usePushNotifications } from '@/src/hooks/usePushNotifications';
+import type { Employee } from '@/src/types/employee.types';
 
 const { height } = Dimensions.get('window');
 
@@ -69,10 +73,12 @@ export default function HomeScreen() {
   usePushNotifications();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [employeeRecord, setEmployeeRecord] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showProfileSheet, setShowProfileSheet] = useState(false);
+  const [accountRevealed, setAccountRevealed] = useState(false);
 
   const translateY = useSharedValue(height);
   const backdropOpacity = useSharedValue(0);
@@ -88,10 +94,21 @@ export default function HomeScreen() {
     }
 
     try {
-      const res = await usersApi.getMe();
-      setProfile(res.data.data);
-    } catch {
-      show({ type: 'error', title: 'Error', message: 'Failed to load profile' });
+      const [profileRes, employeeRes] = await Promise.allSettled([
+        usersApi.getMe(),
+        employeesApi.getMe(),
+      ]);
+
+      if (profileRes.status === 'fulfilled') {
+        setProfile(profileRes.value.data.data);
+      } else {
+        show({ type: 'error', title: 'Error', message: 'Failed to load profile' });
+      }
+
+      if (employeeRes.status === 'fulfilled') {
+        setEmployeeRecord(employeeRes.value.data.data);
+      }
+      // Employee record may not exist for HR admins — silently ignore
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -205,7 +222,7 @@ export default function HomeScreen() {
         {/* Wallet Card */}
         <View style={styles.walletCard}>
           <View style={styles.walletHeader}>
-            <Text style={styles.walletBrand}>Sage Wallet • Lagos State Government</Text>
+            <Text style={styles.walletBrand}>Sage Wallet • {profile?.orgName ?? '—'}</Text>
             <TouchableOpacity
               style={styles.profileIconButton}
               onPress={() => setShowProfileSheet(true)}
@@ -219,8 +236,28 @@ export default function HomeScreen() {
             <Text style={styles.incomingText}>+₦350,000 arriving 25 May 2026</Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{profile?.name || 'Chukwuemeka Obi'}</Text>
-            <Text style={styles.cardNumber}>•••• •••• 7734</Text>
+            <Text style={styles.userName}>{profile?.name ?? '—'}</Text>
+            <View style={styles.accountNumberRow}>
+              <Text style={styles.cardNumber}>
+                {employeeRecord?.accountNumber
+                  ? accountRevealed
+                    ? employeeRecord.accountNumber
+                    : `•••• •••• ${employeeRecord.accountNumber.slice(-4)}`
+                  : '—'}
+              </Text>
+              {employeeRecord?.accountNumber ? (
+                <TouchableOpacity
+                  onPress={() => setAccountRevealed((v) => !v)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.revealButton}
+                >
+                  {accountRevealed
+                    ? <EyeOff size={15} color="rgba(255,255,255,0.6)" />
+                    : <Eye size={15} color="rgba(255,255,255,0.6)" />
+                  }
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -546,10 +583,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'PlusJakartaSans_600SemiBold',
   },
+  accountNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   cardNumber: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: 14,
     fontFamily: 'PlusJakartaSans_500Medium',
+  },
+  revealButton: {
+    padding: 2,
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',

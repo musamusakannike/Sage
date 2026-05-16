@@ -70,6 +70,15 @@ let EmployeesService = class EmployeesService {
             throw new common_1.NotFoundException('Employee not found.');
         return { ...employee, _id: String(employee._id) };
     }
+    async findByEmail(email) {
+        const employee = await this.employeeModel
+            .findOne({ email: email.toLowerCase() })
+            .lean()
+            .exec();
+        if (!employee)
+            return null;
+        return { ...employee, _id: String(employee._id) };
+    }
     async updateStatus(id, orgId, status) {
         const employee = await this.employeeModel
             .findOneAndUpdate({ _id: new mongoose_2.Types.ObjectId(id), orgId: new mongoose_2.Types.ObjectId(orgId) }, { status }, { new: true })
