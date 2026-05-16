@@ -68,11 +68,28 @@ let UsersService = class UsersService {
         });
         return user.save();
     }
+    async createInvited(name, email, role, orgName, orgId) {
+        const user = new this.userModel({ name, email, role, orgName, orgId });
+        return user.save();
+    }
     async findByEmail(email) {
         return this.userModel.findOne({ email }).select('+passwordHash').lean().exec();
     }
     async findById(id) {
         return this.userModel.findById(id).lean().exec();
+    }
+    async setOtp(userId, code, expiresAt) {
+        await this.userModel.findByIdAndUpdate(userId, { otpCode: code, otpExpiresAt: expiresAt });
+    }
+    async clearOtp(userId) {
+        await this.userModel.findByIdAndUpdate(userId, { $unset: { otpCode: '', otpExpiresAt: '' } });
+    }
+    async findByEmailWithOtp(email) {
+        return this.userModel
+            .findOne({ email })
+            .select('+otpCode +otpExpiresAt')
+            .lean()
+            .exec();
     }
 };
 exports.UsersService = UsersService;

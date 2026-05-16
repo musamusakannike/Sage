@@ -5,6 +5,7 @@ var UserRole;
 (function (UserRole) {
     UserRole["HR_ADMIN"] = "hr_admin";
     UserRole["AUDITOR"] = "auditor";
+    UserRole["EMPLOYEE"] = "employee";
 })(UserRole || (exports.UserRole = UserRole = {}));
 var EmployeeStatus;
 (function (EmployeeStatus) {

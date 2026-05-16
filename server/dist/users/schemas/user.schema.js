@@ -20,6 +20,8 @@ let User = class User {
     role;
     orgName;
     orgId;
+    otpCode;
+    otpExpiresAt;
 };
 exports.User = User;
 __decorate([
@@ -31,7 +33,7 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "email", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, type: String, select: false }),
+    (0, mongoose_1.Prop)({ required: false, type: String, select: false }),
     __metadata("design:type", String)
 ], User.prototype, "passwordHash", void 0);
 __decorate([
@@ -46,6 +48,14 @@ __decorate([
     (0, mongoose_1.Prop)({ type: mongoose_2.Types.ObjectId, ref: 'Organisation' }),
     __metadata("design:type", mongoose_2.Types.ObjectId)
 ], User.prototype, "orgId", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: String, select: false }),
+    __metadata("design:type", String)
+], User.prototype, "otpCode", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: Date, select: false }),
+    __metadata("design:type", Date)
+], User.prototype, "otpExpiresAt", void 0);
 exports.User = User = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true, collection: 'users' })
 ], User);
