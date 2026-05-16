@@ -8,11 +8,13 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { EmployeesModule } from '../employees/employees.module';
 
 @Module({
   imports: [
     UsersModule,
     NotificationsModule,
+    EmployeesModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

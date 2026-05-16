@@ -21,7 +21,10 @@ export class UsersService {
       role: dto.role,
       orgName: dto.orgName,
     });
-    return user.save();
+    const saved = await user.save();
+    // Use the admin's own _id as their orgId (they are the org owner)
+    await this.userModel.findByIdAndUpdate(saved._id, { orgId: saved._id });
+    return { ...saved.toObject(), orgId: saved._id } as UserDocument;
   }
 
   async createInvited(

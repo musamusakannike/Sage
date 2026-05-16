@@ -9,6 +9,7 @@ export interface ImportResult {
 export declare class EmployeesService {
     private employeeModel;
     constructor(employeeModel: Model<EmployeeDocument>);
+    createFromInvite(orgId: string, name: string, email: string, roleTitle: string): Promise<EmployeeDocument>;
     findAll(orgId: string, status?: EmployeeStatus, search?: string, page?: number, limit?: number): Promise<{
         data: EmployeeDocument[];
         total: number;
@@ -17,6 +18,6 @@ export declare class EmployeesService {
     updateStatus(id: string, orgId: string, status: EmployeeStatus): Promise<EmployeeDocument>;
     importFromCsv(orgId: string, buffer: Buffer): Promise<ImportResult>;
     updateDnaScore(id: string, score: number): Promise<void>;
-    maskAccountNumber(accountNumber: string): string;
-    maskPhone(phone: string): string;
+    maskAccountNumber(accountNumber: string | null): string;
+    maskPhone(phone: string | null): string;
 }

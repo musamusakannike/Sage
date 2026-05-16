@@ -1,6 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmployeesService } from '../employees/employees.service';
 import { UserDocument } from '../users/schemas/user.schema';
 import { SeedAdminDto } from './dto/seed-admin.dto';
 import { InviteDto } from './dto/invite.dto';
@@ -10,7 +11,8 @@ export declare class AuthService {
     private usersService;
     private jwtService;
     private notificationsService;
-    constructor(usersService: UsersService, jwtService: JwtService, notificationsService: NotificationsService);
+    private employeesService;
+    constructor(usersService: UsersService, jwtService: JwtService, notificationsService: NotificationsService, employeesService: EmployeesService);
     validateUser(email: string, password: string): Promise<UserDocument | null>;
     login(user: UserDocument): Promise<{
         access_token: string;

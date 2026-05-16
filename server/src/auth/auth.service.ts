@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmployeesService } from '../employees/employees.service';
 import { UserDocument } from '../users/schemas/user.schema';
 import { UserRole } from '../common/enums';
 import { SeedAdminDto } from './dto/seed-admin.dto';
@@ -27,6 +28,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private notificationsService: NotificationsService,
+    private employeesService: EmployeesService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<UserDocument | null> {
@@ -38,11 +40,13 @@ export class AuthService {
   }
 
   async login(user: UserDocument): Promise<{ access_token: string }> {
+    // Admins seeded before orgId was set: fall back to their own _id as orgId
+    const orgId = user.orgId?.toString() || String(user._id);
     const payload = {
       sub: String(user._id),
       email: user.email,
       role: user.role,
-      orgId: user.orgId?.toString() ?? '',
+      orgId,
     };
     return { access_token: this.jwtService.sign(payload) };
   }
@@ -63,14 +67,14 @@ export class AuthService {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) throw new BadRequestException('An account with this email already exists.');
 
+    // Admins seeded before orgId was set fall back to their own _id as orgId
+    const orgId = inviter.orgId?.toString() || String(inviter._id);
+
     const role = dto.role === 'auditor' ? UserRole.AUDITOR : UserRole.EMPLOYEE;
-    await this.usersService.createInvited(
-      dto.name,
-      dto.email,
-      role,
-      inviter.orgName,
-      inviter.orgId?.toString() ?? '',
-    );
+    await this.usersService.createInvited(dto.name, dto.email, role, inviter.orgName, orgId);
+
+    // Create a payroll Employee record so the person appears in the employees list
+    await this.employeesService.createFromInvite(orgId, dto.name, dto.email, dto.role);
 
     // Send welcome email — fire and forget so the response is fast
     this.notificationsService.sendWelcomeEmail(dto.email, dto.name, dto.role).catch(() => null);

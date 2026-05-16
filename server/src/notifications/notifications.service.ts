@@ -4,6 +4,8 @@ import Expo, { ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 import { Resend } from 'resend';
 import axios from 'axios';
 
+const FROM_ADDRESS = 'Sage AI <noreply@cloudstech.org>';
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -14,66 +16,117 @@ export class NotificationsService {
     const resendApiKey = this.configService.get<string>('email.resendApiKey');
     if (resendApiKey) {
       this.resend = new Resend(resendApiKey);
-    }
-  }
-
-  async sendVerificationSms(
-    phone: string,
-    employeeName: string,
-    deepLink: string,
-    deadline: Date,
-    email?: string | null,
-  ): Promise<void> {
-    const deadlineStr = deadline.toLocaleDateString('en-NG', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    const apiKey = this.configService.get<string>('sms.termiiApiKey');
-    const smsConfigured = Boolean(apiKey);
-
-    if (smsConfigured) {
-      const message =
-        `Hi ${employeeName}, your salary verification is now open. ` +
-        `Tap to verify before ${deadlineStr}: ${deepLink}`;
-      await this.sendSms(phone, message);
-    } else if (email) {
-      this.logger.warn(
-        `Termii not configured — falling back to email for ${employeeName}`,
-      );
-      await this.sendVerificationEmail(email, employeeName, deepLink, deadline, deadlineStr);
+      this.logger.log(`Resend initialised — from: ${FROM_ADDRESS}`);
     } else {
-      this.logger.warn(
-        `Cannot deliver verification to ${employeeName}: Termii unconfigured and no email on record`,
-      );
+      this.logger.warn('RESEND_API_KEY not set — emails will not be sent');
     }
   }
 
-  async sendSms(phone: string, message: string): Promise<void> {
-    const apiKey = this.configService.get<string>('sms.termiiApiKey');
-    const baseUrl = this.configService.get<string>('sms.termiiBaseUrl');
-    const senderId = this.configService.get<string>('sms.senderId');
+  // ─── Private helper — handles Resend v6 { data, error } response ─────────
 
-    if (!apiKey) {
-      this.logger.warn(`SMS not sent (no API key configured) to: ${phone}`);
+  private async sendEmail(opts: {
+    to: string;
+    subject: string;
+    html: string;
+    label: string;           // used in log messages only
+  }): Promise<void> {
+    if (!this.resend) {
+      this.logger.warn(`[${opts.label}] Skipped — RESEND_API_KEY not configured (to: ${opts.to})`);
       return;
     }
 
-    try {
-      await axios.post(`${baseUrl}/api/sms/send`, {
-        to: phone,
-        from: senderId,
-        sms: message,
-        type: 'plain',
-        channel: 'generic',
-        api_key: apiKey,
-      });
-      this.logger.log(`SMS sent to ${phone}`);
-    } catch (error) {
-      this.logger.error(`SMS failed to ${phone}`, (error as Error).message);
+    const { data, error } = await this.resend.emails.send({
+      from: FROM_ADDRESS,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+    });
+
+    if (error) {
+      // Resend v6 puts all errors here instead of throwing
+      this.logger.error(
+        `[${opts.label}] Failed to deliver to ${opts.to} — ${error.name}: ${error.message}`,
+      );
+      return;
     }
+
+    this.logger.log(`[${opts.label}] Delivered to ${opts.to} — id: ${data?.id}`);
+  }
+
+  // ─── Public email methods ─────────────────────────────────────────────────
+
+  async sendWelcomeEmail(to: string, name: string, role: string): Promise<void> {
+    const roleLabel = role === 'auditor' ? 'an Auditor' : 'an Employee';
+    const appUrl = this.configService.get<string>('app.deepLinkBaseUrl') ?? 'http://localhost:3000';
+    const loginUrl = `${appUrl}/login`;
+
+    await this.sendEmail({
+      to,
+      label: 'WelcomeEmail',
+      subject: `You've been added to Sage AI as ${roleLabel}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1e1e1e;">
+          <div style="margin-bottom:24px;">
+            <span style="font-size:20px;font-weight:700;color:#3a6e57;">Sage AI</span>
+          </div>
+          <h2 style="font-size:22px;font-weight:700;margin:0 0 8px;">Welcome, ${name} 👋</h2>
+          <p style="color:#4e4e4e;margin:0 0 16px;">
+            Your account has been created on <strong>Sage AI</strong> — the payroll integrity system.
+            You have been added as <strong>${roleLabel}</strong>.
+          </p>
+          <p style="color:#4e4e4e;margin:0 0 24px;">
+            To sign in, click the button below and enter your email address.
+            A 6-digit confirmation code will be sent to you — no password needed.
+          </p>
+          <a href="${loginUrl}" style="
+            display:inline-block;
+            padding:13px 28px;
+            background:#3a6e57;
+            color:#ffffff;
+            text-decoration:none;
+            border-radius:8px;
+            font-weight:600;
+            font-size:15px;
+          ">Sign in to Sage AI</a>
+          <hr style="border:none;border-top:1px solid #e0e3dc;margin:32px 0;" />
+          <p style="color:#828282;font-size:12px;margin:0;">
+            If you were not expecting this email, you can safely ignore it.
+          </p>
+        </div>
+      `,
+    });
+  }
+
+  async sendOtpEmail(to: string, name: string, code: string): Promise<void> {
+    await this.sendEmail({
+      to,
+      label: 'OtpEmail',
+      subject: 'Your Sage AI sign-in code',
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1e1e1e;">
+          <div style="margin-bottom:24px;">
+            <span style="font-size:20px;font-weight:700;color:#3a6e57;">Sage AI</span>
+          </div>
+          <h2 style="font-size:22px;font-weight:700;margin:0 0 8px;">Your sign-in code</h2>
+          <p style="color:#4e4e4e;margin:0 0 24px;">Hi ${name}, use the code below to sign in. It expires in <strong>10 minutes</strong>.</p>
+          <div style="
+            display:inline-block;
+            padding:16px 32px;
+            background:#f0faf5;
+            border:2px solid #3a6e57;
+            border-radius:12px;
+            font-size:36px;
+            font-weight:700;
+            letter-spacing:0.35em;
+            color:#3a6e57;
+          ">${code}</div>
+          <hr style="border:none;border-top:1px solid #e0e3dc;margin:32px 0;" />
+          <p style="color:#828282;font-size:12px;margin:0;">
+            If you did not request this code, please ignore this email. Do not share it with anyone.
+          </p>
+        </div>
+      `,
+    });
   }
 
   async sendVerificationEmail(
@@ -83,122 +136,98 @@ export class NotificationsService {
     deadline: Date,
     deadlineStr?: string,
   ): Promise<void> {
-    const fromAddress = this.configService.get<string>('email.fromAddress');
     const formatted = deadlineStr ?? deadline.toLocaleDateString('en-NG', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
     });
 
-    if (!this.resend) {
-      this.logger.warn(`Email not sent (RESEND_API_KEY not configured) to: ${to}`);
-      return;
-    }
-
-    try {
-      await this.resend.emails.send({
-        from: fromAddress ?? 'Sage AI <noreply@sage.ai>',
-        to,
-        subject: 'Action Required: Complete Your Salary Verification',
-        html: `
-          <p>Hi ${employeeName},</p>
-          <p>Your salary verification is now open. Please complete it before <strong>${formatted}</strong>.</p>
-          <p>
-            <a href="${deepLink}" style="
-              display:inline-block;
-              padding:12px 24px;
-              background:#1a1a2e;
-              color:#ffffff;
-              text-decoration:none;
-              border-radius:6px;
-              font-weight:bold;
-            ">Verify Now</a>
+    await this.sendEmail({
+      to,
+      label: 'VerificationEmail',
+      subject: 'Action Required: Complete Your Salary Verification',
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1e1e1e;">
+          <div style="margin-bottom:24px;">
+            <span style="font-size:20px;font-weight:700;color:#3a6e57;">Sage AI</span>
+          </div>
+          <h2 style="font-size:22px;font-weight:700;margin:0 0 8px;">Salary Verification Required</h2>
+          <p style="color:#4e4e4e;margin:0 0 16px;">
+            Hi ${employeeName}, your salary verification is now open.
+            Please complete it before <strong>${formatted}</strong>.
           </p>
-          <p>If the button doesn't work, copy and paste this link into your browser:</p>
-          <p>${deepLink}</p>
-          <hr/>
-          <p style="color:#888;font-size:12px;">This link expires on ${formatted}. Do not share it with anyone.</p>
-        `,
-      });
-      this.logger.log(`Verification email sent to ${to}`);
-    } catch (error) {
-      this.logger.error(`Email failed to ${to}`, (error as Error).message);
-    }
+          <a href="${deepLink}" style="
+            display:inline-block;
+            padding:13px 28px;
+            background:#3a6e57;
+            color:#ffffff;
+            text-decoration:none;
+            border-radius:8px;
+            font-weight:600;
+            font-size:15px;
+          ">Verify Now</a>
+          <p style="color:#4e4e4e;font-size:13px;margin:20px 0 0;">
+            If the button doesn't work, copy this link into your browser:<br/>
+            <a href="${deepLink}" style="color:#3a6e57;">${deepLink}</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #e0e3dc;margin:32px 0;" />
+          <p style="color:#828282;font-size:12px;margin:0;">
+            This link expires on ${formatted}. Do not share it with anyone.
+          </p>
+        </div>
+      `,
+    });
   }
 
-  async sendWelcomeEmail(
-    to: string,
-    name: string,
-    role: string,
+  // ─── SMS ──────────────────────────────────────────────────────────────────
+
+  async sendVerificationSms(
+    phone: string,
+    employeeName: string,
+    deepLink: string,
+    deadline: Date,
+    email?: string | null,
   ): Promise<void> {
-    const fromAddress = this.configService.get<string>('email.fromAddress');
-    const roleLabel = role === 'auditor' ? 'Auditor' : 'Employee';
-    const appUrl = this.configService.get<string>('app.url') ?? 'https://sage.gov.ng';
+    const deadlineStr = deadline.toLocaleDateString('en-NG', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
 
-    if (!this.resend) {
-      this.logger.warn(`Welcome email not sent (RESEND_API_KEY not configured) to: ${to}`);
+    const apiKey = this.configService.get<string>('sms.termiiApiKey');
+    if (apiKey) {
+      const message =
+        `Hi ${employeeName}, your salary verification is now open. ` +
+        `Tap to verify before ${deadlineStr}: ${deepLink}`;
+      await this.sendSms(phone, message);
+    } else if (email) {
+      this.logger.warn(`Termii not configured — falling back to email for ${employeeName}`);
+      await this.sendVerificationEmail(email, employeeName, deepLink, deadline, deadlineStr);
+    } else {
+      this.logger.warn(
+        `Cannot deliver verification to ${employeeName}: Termii unconfigured and no email on record`,
+      );
+    }
+  }
+
+  async sendSms(phone: string, message: string): Promise<void> {
+    const apiKey  = this.configService.get<string>('sms.termiiApiKey');
+    const baseUrl = this.configService.get<string>('sms.termiiBaseUrl');
+    const senderId = this.configService.get<string>('sms.senderId');
+
+    if (!apiKey) {
+      this.logger.warn(`SMS not sent (no API key) to: ${phone}`);
       return;
     }
 
     try {
-      await this.resend.emails.send({
-        from: fromAddress ?? 'Sage AI <noreply@sage.ai>',
-        to,
-        subject: `You've been added to Sage AI as ${roleLabel === 'Auditor' ? 'an' : 'a'} ${roleLabel}`,
-        html: `
-          <p>Hi ${name},</p>
-          <p>Your account has been created on <strong>Sage AI</strong> — the payroll integrity system.</p>
-          <p>You have been added as a <strong>${roleLabel}</strong>.</p>
-          <p>To sign in, visit the link below and enter your email address. A 6-digit confirmation code will be sent to you.</p>
-          <p>
-            <a href="${appUrl}/login" style="
-              display:inline-block;
-              padding:12px 24px;
-              background:#3a6e57;
-              color:#ffffff;
-              text-decoration:none;
-              border-radius:6px;
-              font-weight:bold;
-            ">Sign in to Sage AI</a>
-          </p>
-          <hr/>
-          <p style="color:#888;font-size:12px;">If you were not expecting this email, please ignore it.</p>
-        `,
+      await axios.post(`${baseUrl}/api/sms/send`, {
+        to: phone, from: senderId, sms: message,
+        type: 'plain', channel: 'generic', api_key: apiKey,
       });
-      this.logger.log(`Welcome email sent to ${to}`);
+      this.logger.log(`SMS sent to ${phone}`);
     } catch (error) {
-      this.logger.error(`Welcome email failed to ${to}`, (error as Error).message);
+      this.logger.error(`SMS failed to ${phone}`, (error as Error).message);
     }
   }
 
-  async sendOtpEmail(to: string, name: string, code: string): Promise<void> {
-    const fromAddress = this.configService.get<string>('email.fromAddress');
-
-    if (!this.resend) {
-      this.logger.warn(`OTP email not sent (RESEND_API_KEY not configured) to: ${to} — code: ${code}`);
-      return;
-    }
-
-    try {
-      await this.resend.emails.send({
-        from: fromAddress ?? 'Sage AI <noreply@sage.ai>',
-        to,
-        subject: 'Your Sage AI sign-in code',
-        html: `
-          <p>Hi ${name},</p>
-          <p>Your sign-in confirmation code is:</p>
-          <p style="font-size:36px;font-weight:bold;letter-spacing:0.3em;color:#3a6e57;">${code}</p>
-          <p>This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
-          <hr/>
-          <p style="color:#888;font-size:12px;">If you did not request this code, please ignore this email.</p>
-        `,
-      });
-      this.logger.log(`OTP email sent to ${to}`);
-    } catch (error) {
-      this.logger.error(`OTP email failed to ${to}`, (error as Error).message);
-    }
-  }
+  // ─── Push ─────────────────────────────────────────────────────────────────
 
   async sendPushNotification(
     expoPushTokens: string[],
@@ -206,38 +235,24 @@ export class NotificationsService {
     body: string,
     data?: Record<string, unknown>,
   ): Promise<void> {
-    const validTokens = expoPushTokens.filter((token) =>
-      Expo.isExpoPushToken(token),
-    );
-
+    const validTokens = expoPushTokens.filter(Expo.isExpoPushToken);
     if (validTokens.length === 0) {
       this.logger.warn('No valid Expo push tokens provided');
       return;
     }
 
-    const messages: ExpoPushMessage[] = validTokens.map((to) => ({
-      to,
-      title,
-      body,
-      data,
-      sound: 'default',
+    const messages: ExpoPushMessage[] = validTokens.map(to => ({
+      to, title, body, data, sound: 'default',
     }));
 
-    const chunks = this.expo.chunkPushNotifications(messages);
-
-    for (const chunk of chunks) {
+    for (const chunk of this.expo.chunkPushNotifications(messages)) {
       try {
-        const tickets: ExpoPushTicket[] =
-          await this.expo.sendPushNotificationsAsync(chunk);
-
+        const tickets: ExpoPushTicket[] = await this.expo.sendPushNotificationsAsync(chunk);
         tickets.forEach((ticket, i) => {
           if (ticket.status === 'error') {
-            this.logger.error(
-              `Push failed for ${validTokens[i]}: ${ticket.message}`,
-            );
+            this.logger.error(`Push failed for ${validTokens[i]}: ${ticket.message}`);
           }
         });
-
         this.logger.log(`Push sent to ${chunk.length} device(s): ${title}`);
       } catch (error) {
         this.logger.error('Push chunk failed', (error as Error).message);

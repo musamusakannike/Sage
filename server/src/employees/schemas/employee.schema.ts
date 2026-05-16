@@ -15,11 +15,11 @@ export class Employee {
   @Prop({ required: true, type: String })
   roleTitle: string;
 
-  @Prop({ required: true, type: String })
-  accountNumber: string;
+  @Prop({ required: false, type: String, default: null })
+  accountNumber: string | null;
 
-  @Prop({ required: true, type: String, unique: true })
-  phone: string;
+  @Prop({ required: false, type: String, sparse: true, default: null })
+  phone: string | null;
 
   @Prop({ type: String, default: null })
   email: string | null;
@@ -44,4 +44,4 @@ export class Employee {
 export const EmployeeSchema = SchemaFactory.createForClass(Employee);
 
 EmployeeSchema.index({ orgId: 1, status: 1 });
-EmployeeSchema.index({ phone: 1 });
+EmployeeSchema.index({ phone: 1 }, { unique: true, sparse: true });

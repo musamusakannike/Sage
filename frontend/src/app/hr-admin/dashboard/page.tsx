@@ -55,38 +55,37 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        
-        // Fetch user profile
-        const userRes = await usersApi.getMe();
+        const [userRes, employeesRes] = await Promise.all([
+          usersApi.getMe(),
+          employeesApi.list({ limit: 100 }),
+        ]);
+
         setUserProfile(userRes.data.data);
 
-        // Fetch all employees
-        const employeesRes = await employeesApi.list({ limit: 100 });
         const employeeData = employeesRes.data.data.data;
         setEmployees(employeeData);
 
-        // Calculate stats
         const totalEmployees = employeesRes.data.data.total;
-        const cleared = employeeData.filter(e => e.status === "CLEAR").length;
-        const review = employeeData.filter(e => e.status === "REVIEW").length;
-        const frozen = employeeData.filter(e => e.status === "FROZEN").length;
-        
         setStats({
           totalEmployees,
-          cleared,
-          review,
-          frozen,
+          cleared: employeeData.filter(e => e.status === "CLEAR").length,
+          review:  employeeData.filter(e => e.status === "REVIEW").length,
+          frozen:  employeeData.filter(e => e.status === "FROZEN").length,
         });
-
-        // Fetch payroll schedule
-        const payrollRes = await payrollApi.getSchedule();
-        setPayrollSchedule(payrollRes.data.data);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
         setLoading(false);
+      }
+
+      // Payroll schedule is optional — don't let it crash the dashboard
+      try {
+        const payrollRes = await payrollApi.getSchedule();
+        setPayrollSchedule(payrollRes.data.data);
+      } catch {
+        // schedule will be created on first visit after orgId is valid
       }
     };
 
@@ -233,9 +232,9 @@ export default function DashboardPage() {
                   <tbody>
                     {employees.slice(0, 9).map((emp) => (
                       <tr
-                        key={emp._id}
+                        key={String(emp._id)}
                         className="border-b border-[#ededed] hover:bg-[#f8f8f8] cursor-pointer transition-colors"
-                        onClick={() => router.push(`/hr-admin/employees/${emp._id}`)}
+                        onClick={() => router.push(`/hr-admin/employees/${String(emp._id)}`)}
                       >
                         <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
                           <div className="w-4 h-4 border border-[#dfe1e6] rounded bg-white" />
@@ -247,7 +246,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="min-w-0">
                               <p className="text-[#4d4d4d] text-[12px] font-medium leading-tight overflow-hidden text-ellipsis whitespace-nowrap">{emp.name}</p>
-                              <p className="text-[#787878] text-[10px] font-normal leading-tight overflow-hidden text-ellipsis whitespace-nowrap">{emp._id.slice(-8).toUpperCase()} · {emp.roleTitle}</p>
+                              <p className="text-[#787878] text-[10px] font-normal leading-tight overflow-hidden text-ellipsis whitespace-nowrap">{String(emp._id).slice(-8).toUpperCase()} · {emp.roleTitle}</p>
                             </div>
                           </div>
                         </td>

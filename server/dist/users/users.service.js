@@ -66,7 +66,9 @@ let UsersService = class UsersService {
             role: dto.role,
             orgName: dto.orgName,
         });
-        return user.save();
+        const saved = await user.save();
+        await this.userModel.findByIdAndUpdate(saved._id, { orgId: saved._id });
+        return { ...saved.toObject(), orgId: saved._id };
     }
     async createInvited(name, email, role, orgName, orgId) {
         const user = new this.userModel({ name, email, role, orgName, orgId });

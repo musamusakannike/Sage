@@ -24,7 +24,19 @@ let EmployeesService = class EmployeesService {
     constructor(employeeModel) {
         this.employeeModel = employeeModel;
     }
+    async createFromInvite(orgId, name, email, roleTitle) {
+        return this.employeeModel.create({
+            orgId: new mongoose_2.Types.ObjectId(orgId),
+            name,
+            email,
+            roleTitle,
+            status: enums_1.EmployeeStatus.PENDING,
+        });
+    }
     async findAll(orgId, status, search, page = 1, limit = 20) {
+        if (!orgId || !mongoose_2.Types.ObjectId.isValid(orgId)) {
+            return { data: [], total: 0 };
+        }
         const filter = {
             orgId: new mongoose_2.Types.ObjectId(orgId),
             deletedAt: false,
@@ -47,7 +59,8 @@ let EmployeesService = class EmployeesService {
                 .exec(),
             this.employeeModel.countDocuments(filter).exec(),
         ]);
-        return { data: data, total };
+        const serialized = data.map(d => ({ ...d, _id: String(d._id) }));
+        return { data: serialized, total };
     }
     async findById(id, orgId) {
         const employee = await this.employeeModel
@@ -56,7 +69,7 @@ let EmployeesService = class EmployeesService {
             .exec();
         if (!employee)
             throw new common_1.NotFoundException('Employee not found.');
-        return employee;
+        return { ...employee, _id: String(employee._id) };
     }
     async updateStatus(id, orgId, status) {
         const employee = await this.employeeModel
@@ -65,7 +78,7 @@ let EmployeesService = class EmployeesService {
             .exec();
         if (!employee)
             throw new common_1.NotFoundException('Employee not found.');
-        return employee;
+        return { ...employee, _id: String(employee._id) };
     }
     async importFromCsv(orgId, buffer) {
         let rows;

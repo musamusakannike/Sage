@@ -68,7 +68,7 @@ export class PayrollController {
         expiresAt,
       );
       await this.notificationsService.sendVerificationSms(
-        employee.phone,
+        employee.phone ?? '',
         employee.name,
         deepLink,
         expiresAt,

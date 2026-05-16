@@ -25,6 +25,9 @@ export class PayrollService {
   }
 
   async getOrCreate(orgId: string): Promise<PayrollScheduleDocument> {
+    if (!orgId || !Types.ObjectId.isValid(orgId)) {
+      throw new NotFoundException('Organisation not found.');
+    }
     let schedule = await this.scheduleModel
       .findOne({ orgId: new Types.ObjectId(orgId) })
       .lean()

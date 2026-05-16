@@ -9,6 +9,7 @@ import {
 import { authApi } from "@/lib/api/auth.api";
 import { employeesApi } from "@/lib/api/employees.api";
 import { getApiErrorMessage } from "@/lib/utils";
+import type { Employee } from "@/lib/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ function CsvMode() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [roster, setRoster] = useState<Employee[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -65,6 +67,9 @@ function CsvMode() {
       const res = await employeesApi.importCsv(file);
       const { imported, skipped } = res.data.data;
       setImportResult({ imported, skipped });
+      // fetch the current roster to display immediately after import
+      const listRes = await employeesApi.list({ limit: 100 });
+      setRoster(listRes.data.data.data);
     } catch (err) {
       setImportError(getApiErrorMessage(err));
     } finally {
@@ -165,8 +170,8 @@ function CsvMode() {
           </div>
         )}
 
-        {/* Preview */}
-        {hasFile && (
+        {/* File preview — shown before import */}
+        {hasFile && !importResult && (
           <div className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
             <div className="px-6 py-4 border-b border-[#e0e3dc]">
               <h3 className="text-[#1e1e1e] text-[14px] font-bold">File Preview — First 3 Rows</h3>
@@ -188,6 +193,51 @@ function CsvMode() {
                     <td className="px-6 py-3 text-[#828282] text-[14px] font-mono">{row.phone}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Roster list — shown after successful import */}
+        {importResult && roster.length > 0 && (
+          <div className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#e0e3dc] flex items-center justify-between">
+              <h3 className="text-[#1e1e1e] text-[14px] font-bold">Current Roster — {roster.length} employees</h3>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr className="bg-[#f8f8f8] border-b border-[#f0f0f0]">
+                  {["EMPLOYEE", "ROLE", "ACCOUNT", "STATUS"].map(h => (
+                    <th key={h} className="text-left text-[11px] font-semibold text-[#828282] uppercase tracking-widest px-4 py-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {roster.map((emp) => {
+                  const initials = emp.name.split(" ").map((p: string) => p[0]).slice(0, 2).join("").toUpperCase();
+                  return (
+                    <tr key={emp._id} className="border-b border-[#f0f0f0] last:border-0 hover:bg-[#f8f8f8] transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-[#e0f2ea] flex items-center justify-center shrink-0">
+                            <span className="text-[#3a6e57] text-[11px] font-bold">{initials}</span>
+                          </div>
+                          <span className="text-[#1e1e1e] text-[13px] font-medium">{emp.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-[#4e4e4e] text-[13px]">{emp.roleTitle}</td>
+                      <td className="px-4 py-3 text-[#828282] text-[13px] font-mono">
+                        {emp.accountNumber ? `**** ${emp.accountNumber.slice(-4)}` : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {emp.status === "FROZEN" && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#fee2e2] text-[#b91c1c]">Frozen</span>}
+                        {emp.status === "REVIEW" && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#fef3c7] text-[#b45309]">Review</span>}
+                        {emp.status === "CLEAR"  && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#dcfce7] text-[#158079]">Clear</span>}
+                        {emp.status === "PENDING" && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[#828282]">Pending</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

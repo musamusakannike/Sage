@@ -5,8 +5,8 @@ export declare class Employee {
     orgId: Types.ObjectId;
     name: string;
     roleTitle: string;
-    accountNumber: string;
-    phone: string;
+    accountNumber: string | null;
+    phone: string | null;
     email: string | null;
     dnaScore: number | null;
     status: EmployeeStatus;
@@ -49,7 +49,7 @@ export declare const EmployeeSchema: import("mongoose").Schema<Employee, import(
     }, "id"> & {
         id: string;
     }> | undefined;
-    accountNumber?: import("mongoose").SchemaDefinitionProperty<string, Employee, import("mongoose").Document<unknown, {}, Employee, {
+    accountNumber?: import("mongoose").SchemaDefinitionProperty<string | null, Employee, import("mongoose").Document<unknown, {}, Employee, {
         id: string;
     }, import("mongoose").DefaultSchemaOptions> & Omit<Employee & {
         _id: Types.ObjectId;
@@ -58,7 +58,7 @@ export declare const EmployeeSchema: import("mongoose").Schema<Employee, import(
     }, "id"> & {
         id: string;
     }> | undefined;
-    phone?: import("mongoose").SchemaDefinitionProperty<string, Employee, import("mongoose").Document<unknown, {}, Employee, {
+    phone?: import("mongoose").SchemaDefinitionProperty<string | null, Employee, import("mongoose").Document<unknown, {}, Employee, {
         id: string;
     }, import("mongoose").DefaultSchemaOptions> & Omit<Employee & {
         _id: Types.ObjectId;

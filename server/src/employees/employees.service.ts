@@ -29,6 +29,21 @@ export class EmployeesService {
     @InjectModel(Employee.name) private employeeModel: Model<EmployeeDocument>,
   ) {}
 
+  async createFromInvite(
+    orgId: string,
+    name: string,
+    email: string,
+    roleTitle: string,
+  ): Promise<EmployeeDocument> {
+    return this.employeeModel.create({
+      orgId: new Types.ObjectId(orgId),
+      name,
+      email,
+      roleTitle,
+      status: EmployeeStatus.PENDING,
+    }) as Promise<EmployeeDocument>;
+  }
+
   async findAll(
     orgId: string,
     status?: EmployeeStatus,
@@ -36,6 +51,10 @@ export class EmployeesService {
     page = 1,
     limit = 20,
   ): Promise<{ data: EmployeeDocument[]; total: number }> {
+    if (!orgId || !Types.ObjectId.isValid(orgId)) {
+      return { data: [], total: 0 };
+    }
+
     const filter: Record<string, unknown> = {
       orgId: new Types.ObjectId(orgId),
       deletedAt: false,
@@ -59,7 +78,8 @@ export class EmployeesService {
       this.employeeModel.countDocuments(filter).exec(),
     ]);
 
-    return { data: data as EmployeeDocument[], total };
+    const serialized = data.map(d => ({ ...d, _id: String(d._id) }));
+    return { data: serialized as unknown as EmployeeDocument[], total };
   }
 
   async findById(id: string, orgId: string): Promise<EmployeeDocument> {
@@ -68,7 +88,7 @@ export class EmployeesService {
       .lean()
       .exec();
     if (!employee) throw new NotFoundException('Employee not found.');
-    return employee as EmployeeDocument;
+    return { ...employee, _id: String(employee._id) } as unknown as EmployeeDocument;
   }
 
   async updateStatus(
@@ -85,7 +105,7 @@ export class EmployeesService {
       .lean()
       .exec();
     if (!employee) throw new NotFoundException('Employee not found.');
-    return employee as EmployeeDocument;
+    return { ...employee, _id: String(employee._id) } as unknown as EmployeeDocument;
   }
 
   async importFromCsv(
@@ -182,12 +202,12 @@ export class EmployeesService {
       .exec();
   }
 
-  maskAccountNumber(accountNumber: string): string {
+  maskAccountNumber(accountNumber: string | null): string {
     if (!accountNumber || accountNumber.length < 4) return '****';
     return `****${accountNumber.slice(-4)}`;
   }
 
-  maskPhone(phone: string): string {
+  maskPhone(phone: string | null): string {
     if (!phone || phone.length < 7) return '***';
     return `${phone.slice(0, 3)}****${phone.slice(-4)}`;
   }

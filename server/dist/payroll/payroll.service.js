@@ -64,6 +64,9 @@ let PayrollService = class PayrollService {
         this.encryptionKey = Buffer.from(key.padEnd(32).slice(0, 32));
     }
     async getOrCreate(orgId) {
+        if (!orgId || !mongoose_2.Types.ObjectId.isValid(orgId)) {
+            throw new common_1.NotFoundException('Organisation not found.');
+        }
         let schedule = await this.scheduleModel
             .findOne({ orgId: new mongoose_2.Types.ObjectId(orgId) })
             .lean()

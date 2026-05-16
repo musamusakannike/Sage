@@ -39,12 +39,12 @@ __decorate([
     __metadata("design:type", String)
 ], Employee.prototype, "roleTitle", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, type: String }),
-    __metadata("design:type", String)
+    (0, mongoose_1.Prop)({ required: false, type: String, default: null }),
+    __metadata("design:type", Object)
 ], Employee.prototype, "accountNumber", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ required: true, type: String, unique: true }),
-    __metadata("design:type", String)
+    (0, mongoose_1.Prop)({ required: false, type: String, sparse: true, default: null }),
+    __metadata("design:type", Object)
 ], Employee.prototype, "phone", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ type: String, default: null }),
@@ -75,5 +75,5 @@ exports.Employee = Employee = __decorate([
 ], Employee);
 exports.EmployeeSchema = mongoose_1.SchemaFactory.createForClass(Employee);
 exports.EmployeeSchema.index({ orgId: 1, status: 1 });
-exports.EmployeeSchema.index({ phone: 1 });
+exports.EmployeeSchema.index({ phone: 1 }, { unique: true, sparse: true });
 //# sourceMappingURL=employee.schema.js.map

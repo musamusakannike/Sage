@@ -50,7 +50,7 @@ let PayrollController = class PayrollController {
         let sent = 0;
         for (const employee of employees) {
             const deepLink = await this.verificationService.createSession(String(employee._id), user.orgId, cycleId, expiresAt);
-            await this.notificationsService.sendVerificationSms(employee.phone, employee.name, deepLink, expiresAt, employee.email);
+            await this.notificationsService.sendVerificationSms(employee.phone ?? '', employee.name, deepLink, expiresAt, employee.email);
             sent++;
         }
         return { message: `Verification invites sent to ${sent} employees.` };

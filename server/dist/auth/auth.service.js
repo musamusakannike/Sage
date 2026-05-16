@@ -48,6 +48,7 @@ const jwt_1 = require("@nestjs/jwt");
 const bcrypt = __importStar(require("bcryptjs"));
 const users_service_1 = require("../users/users.service");
 const notifications_service_1 = require("../notifications/notifications.service");
+const employees_service_1 = require("../employees/employees.service");
 const enums_1 = require("../common/enums");
 const OTP_TTL_MINUTES = 10;
 function generateOtp() {
@@ -57,10 +58,12 @@ let AuthService = class AuthService {
     usersService;
     jwtService;
     notificationsService;
-    constructor(usersService, jwtService, notificationsService) {
+    employeesService;
+    constructor(usersService, jwtService, notificationsService, employeesService) {
         this.usersService = usersService;
         this.jwtService = jwtService;
         this.notificationsService = notificationsService;
+        this.employeesService = employeesService;
     }
     async validateUser(email, password) {
         const user = await this.usersService.findByEmail(email);
@@ -72,11 +75,12 @@ let AuthService = class AuthService {
         return user;
     }
     async login(user) {
+        const orgId = user.orgId?.toString() || String(user._id);
         const payload = {
             sub: String(user._id),
             email: user.email,
             role: user.role,
-            orgId: user.orgId?.toString() ?? '',
+            orgId,
         };
         return { access_token: this.jwtService.sign(payload) };
     }
@@ -94,8 +98,10 @@ let AuthService = class AuthService {
         const existing = await this.usersService.findByEmail(dto.email);
         if (existing)
             throw new common_1.BadRequestException('An account with this email already exists.');
+        const orgId = inviter.orgId?.toString() || String(inviter._id);
         const role = dto.role === 'auditor' ? enums_1.UserRole.AUDITOR : enums_1.UserRole.EMPLOYEE;
-        await this.usersService.createInvited(dto.name, dto.email, role, inviter.orgName, inviter.orgId?.toString() ?? '');
+        await this.usersService.createInvited(dto.name, dto.email, role, inviter.orgName, orgId);
+        await this.employeesService.createFromInvite(orgId, dto.name, dto.email, dto.role);
         this.notificationsService.sendWelcomeEmail(dto.email, dto.name, dto.role).catch(() => null);
         return { message: `Invitation sent to ${dto.email}.` };
     }
@@ -140,6 +146,7 @@ exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [users_service_1.UsersService,
         jwt_1.JwtService,
-        notifications_service_1.NotificationsService])
+        notifications_service_1.NotificationsService,
+        employees_service_1.EmployeesService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

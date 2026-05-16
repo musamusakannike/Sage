@@ -17,6 +17,7 @@ const local_strategy_1 = require("./strategies/local.strategy");
 const jwt_strategy_1 = require("./strategies/jwt.strategy");
 const users_module_1 = require("../users/users.module");
 const notifications_module_1 = require("../notifications/notifications.module");
+const employees_module_1 = require("../employees/employees.module");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -25,6 +26,7 @@ exports.AuthModule = AuthModule = __decorate([
         imports: [
             users_module_1.UsersModule,
             notifications_module_1.NotificationsModule,
+            employees_module_1.EmployeesModule,
             passport_1.PassportModule,
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
