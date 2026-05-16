@@ -22,7 +22,6 @@ import {
   X,
   User,
   Building2,
-  Landmark,
   ScanLine,
   MapPin,
   Fingerprint,
@@ -48,6 +47,7 @@ import { Colors } from '@/constants';
 import { usersApi } from '@/src/api/users.api';
 import { useAuthStore } from '@/src/store/auth.store';
 import { useToastStore } from '@/src/store/toast.store';
+import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 
 const { height } = Dimensions.get('window');
 
@@ -64,6 +64,9 @@ export default function HomeScreen() {
   const router = useRouter();
   const { logout } = useAuthStore();
   const { show } = useToastStore();
+
+  // Register Expo push token with the server on first authenticated load
+  usePushNotifications();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -229,7 +232,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Payment Frozen Alert */}
-          <View style={styles.frozenAlert}>
+          <TouchableOpacity style={styles.frozenAlert} onPress={() => setShowModal(true)} activeOpacity={0.8}>
             <View style={styles.frozenIconContainer}>
               <AlertCircle size={20} color={Colors.frozen} />
             </View>
@@ -239,7 +242,8 @@ export default function HomeScreen() {
                 Your salary is on hold. Your HR team has been notified and will reach out to you.
               </Text>
             </View>
-          </View>
+            <ChevronRight size={16} color={Colors.frozen} style={{ alignSelf: 'center' }} />
+          </TouchableOpacity>
 
           {/* Verification Items */}
           <View style={styles.statusList}>
@@ -327,21 +331,21 @@ export default function HomeScreen() {
               <View style={styles.modalHandle} />
               <View style={styles.modalContent}>
                 <View style={styles.modalIconContainer}>
-                  <Landmark size={40} color={Colors.frozen} />
+                  <AlertTriangle size={40} color={Colors.frozen} />
                 </View>
-                <Text style={styles.modalTitle}>Verification Required</Text>
+                <Text style={styles.modalTitle}>Payment Frozen</Text>
                 <Text style={styles.modalDescription}>
-                  Our system has detected anomalies in your account. To ensure the security of your payroll and prevent fraud, please complete a quick identity verification.
+                  Your ₦350,000 salary disbursement has been frozen due to suspicious activity flagged during verification. Completing identity verification will allow us to review and release your payment.
                 </Text>
                 <View style={styles.alertBox}>
-                  <AlertTriangle size={20} color={Colors.frozen} />
+                  <AlertTriangle size={20} color={Colors.pending} />
                   <Text style={styles.alertText}>
-                    Your account may be temporarily restricted until verification is completed.
+                    Liveness check failed and post-pay velocity was flagged. Your payment will remain on hold until verification is complete.
                   </Text>
                 </View>
                 <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
                   <Shield size={20} color="#FFFFFF" />
-                  <Text style={styles.verifyButtonText}>Verify Identity Now</Text>
+                  <Text style={styles.verifyButtonText}>Start Verification</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.dismissButton} onPress={() => setShowModal(false)}>
                   <Text style={styles.dismissButtonText}>I'll do this later</Text>

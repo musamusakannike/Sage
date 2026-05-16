@@ -93,6 +93,9 @@ let UsersService = class UsersService {
             .lean()
             .exec();
     }
+    async updatePushToken(userId, expoPushToken) {
+        await this.userModel.findByIdAndUpdate(userId, { expoPushToken });
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

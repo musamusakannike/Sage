@@ -61,4 +61,8 @@ export class UsersService {
       .lean()
       .exec() as Promise<UserDocument | null>;
   }
+
+  async updatePushToken(userId: string, expoPushToken: string): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, { expoPushToken });
+  }
 }

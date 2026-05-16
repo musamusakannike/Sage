@@ -30,6 +30,10 @@ export class User {
 
   @Prop({ type: Date, select: false })
   otpExpiresAt?: Date;
+
+  // Expo push notification token
+  @Prop({ type: String })
+  expoPushToken?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
