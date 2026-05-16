@@ -54,11 +54,5 @@ export declare class LeaderboardController {
             id: string;
         })[];
     }>;
-    freezeEmployee(employeeId: string, user: JwtPayload): Promise<import("mongoose").Document<unknown, {}, import("../employees/schemas/employee.schema").Employee, {}, import("mongoose").DefaultSchemaOptions> & import("../employees/schemas/employee.schema").Employee & {
-        _id: import("mongoose").Types.ObjectId;
-    } & {
-        __v: number;
-    } & {
-        id: string;
-    }>;
+    freezeEmployee(employeeId: string): Promise<{}>;
 }

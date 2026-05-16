@@ -201,6 +201,39 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             this.logger.error(`SMS failed to ${phone}`, error.message);
         }
     }
+    async sendFreezeEmail(to, name) {
+        await this.sendEmail({
+            to,
+            label: 'FreezeEmail',
+            subject: '⚠️ Your Sage AI account has been frozen',
+            html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#1e1e1e;">
+          <div style="margin-bottom:24px;">
+            <span style="font-size:20px;font-weight:700;color:#3a6e57;">Sage AI</span>
+          </div>
+          <div style="background:#fff1f2;border:1.5px solid #fecaca;border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+            <h2 style="font-size:20px;font-weight:700;margin:0 0 8px;color:#b91c1c;">❄️ Account Frozen</h2>
+            <p style="color:#7f1d1d;margin:0;font-size:14px;line-height:1.6;">
+              Hi <strong>${name}</strong>, your payroll account on <strong>Sage AI</strong> has been
+              <strong>frozen</strong> by a compliance auditor following a risk review.
+            </p>
+          </div>
+          <p style="color:#4e4e4e;font-size:14px;line-height:1.7;margin:0 0 16px;">
+            This means your salary disbursement has been <strong>temporarily blocked</strong>
+            pending verification. You will need to complete a fresh liveness check to restore access.
+          </p>
+          <p style="color:#4e4e4e;font-size:14px;line-height:1.7;margin:0 0 24px;">
+            Please contact your <strong>HR administrator</strong> immediately or open the Sage AI
+            mobile app to begin the verification process.
+          </p>
+          <hr style="border:none;border-top:1px solid #e0e3dc;margin:24px 0;" />
+          <p style="color:#828282;font-size:12px;margin:0;">
+            If you believe this was an error, contact your HR admin. Do not reply to this email.
+          </p>
+        </div>
+      `,
+        });
+    }
     async sendPushNotification(expoPushTokens, title, body, data) {
         const validTokens = expoPushTokens.filter(expo_server_sdk_1.default.isExpoPushToken);
         if (validTokens.length === 0) {

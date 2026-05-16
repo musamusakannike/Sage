@@ -1,7 +1,6 @@
 "use client";
 import Sidebar from "@/components/hr-admin/Sidebar";
 import Topbar from "@/components/hr-admin/Topbar";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { employeesApi } from "@/lib/api/employees.api";
@@ -114,12 +113,13 @@ export default function EmployeeDetailPage() {
           <Topbar title="Employee Detail" />
           <main className="flex-1 p-6 flex flex-col items-center justify-center gap-4">
             <p className="text-[#828282] text-[14px]">Employee not found.</p>
-            <Link href="/hr-admin/employees">
-              <button className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors border border-[#f0f0f0]">
-                <ArrowLeft className="w-4 h-4 text-[#4e4e4e]" strokeWidth={2} />
-                <span className="text-[#4e4e4e] text-[14px]">Back to Employees</span>
-              </button>
-            </Link>
+            <button
+              onClick={() => router.push("/hr-admin/employees")}
+              className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors border border-[#f0f0f0]"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#4e4e4e]" strokeWidth={2} />
+              <span className="text-[#4e4e4e] text-[14px]">Back to Employees</span>
+            </button>
           </main>
         </div>
       </div>
@@ -139,12 +139,13 @@ export default function EmployeeDetailPage() {
 
           {/* Back Button */}
           <div className="shrink-0">
-            <Link href="/hr-admin/employees">
-              <button className="flex items-center gap-2 bg-white rounded-lg px-2 py-1.5 hover:bg-gray-50 transition-colors border border-[#f0f0f0]">
-                <ArrowLeft className="w-5 h-5 text-[#4e4e4e]" strokeWidth={2} />
-                <span className="text-[#4e4e4e] text-[14px] font-normal">Back</span>
-              </button>
-            </Link>
+            <button
+              onClick={() => router.push("/hr-admin/employees")}
+              className="flex items-center gap-2 bg-white rounded-lg px-2 py-1.5 hover:bg-gray-50 transition-colors border border-[#f0f0f0]"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#4e4e4e]" strokeWidth={2} />
+              <span className="text-[#4e4e4e] text-[14px] font-normal">Back</span>
+            </button>
           </div>
 
           {/* Profile Card */}

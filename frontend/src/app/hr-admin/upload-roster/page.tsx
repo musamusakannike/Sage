@@ -1,7 +1,7 @@
 "use client";
 import Sidebar from "@/components/hr-admin/Sidebar";
 import Topbar from "@/components/hr-admin/Topbar";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   UploadCloud, Download, FileText, CheckCircle2, AlertTriangle,
@@ -21,15 +21,18 @@ interface FormState {
   userRole: "employee" | "auditor";
   role: string;
   department: string;
-  accountNumber: string;
   phone: string;
   email: string;
   salary: string;
 }
 
 const emptyForm: FormState = {
-  fullName: "", userRole: "employee", role: "", department: "", accountNumber: "", phone: "", email: "", salary: "",
+  fullName: "", userRole: "employee", role: "", department: "", phone: "", email: "", salary: "",
 };
+
+function generateAccountNumber(): string {
+  return Array.from({ length: 10 }, () => Math.floor(Math.random() * 10)).join("");
+}
 
 // ─── CSV Upload Mode ──────────────────────────────────────────────────────────
 
@@ -338,6 +341,7 @@ function getInitials(name: string) {
 }
 
 function EmployeeListSection({ refreshKey }: { refreshKey: number }) {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -365,11 +369,12 @@ function EmployeeListSection({ refreshKey }: { refreshKey: number }) {
           <h3 className="text-[#1e1e1e] text-[14px] font-bold">Current Employee Roster</h3>
           {!loading && <p className="text-[#828282] text-[12px] mt-0.5">{total} employees on record</p>}
         </div>
-        <Link href="/hr-admin/employees">
-          <button className="flex items-center gap-1.5 text-[12px] text-[#4e4e4e] hover:text-[#1e1e1e] border border-[#e0e3dc] hover:bg-[#f0f2f6] px-3 py-1.5 rounded-lg transition-colors font-medium">
-            <Eye className="w-3.5 h-3.5" /> View all
-          </button>
-        </Link>
+        <button
+          onClick={() => router.push("/hr-admin/employees")}
+          className="flex items-center gap-1.5 text-[12px] text-[#4e4e4e] hover:text-[#1e1e1e] border border-[#e0e3dc] hover:bg-[#f0f2f6] px-3 py-1.5 rounded-lg transition-colors font-medium"
+        >
+          <Eye className="w-3.5 h-3.5" /> View all
+        </button>
       </div>
       <table className="w-full">
         <thead>
@@ -474,13 +479,12 @@ function ManualMode() {
 
   const validate = () => {
     const e: Partial<FormState> = {};
-    if (!form.fullName.trim())      e.fullName = "Full name is required";
-    if (!form.email.trim())         e.email = "Email is required";
-    if (!form.role.trim())          e.role = "Job title is required";
-    if (!form.department)           e.department = "Department is required";
-    if (!form.accountNumber.trim()) e.accountNumber = "Account number is required";
-    if (!form.phone.trim())         e.phone = "Phone number is required";
-    if (!form.salary.trim())        e.salary = "Gross salary is required";
+    if (!form.fullName.trim()) e.fullName = "Full name is required";
+    if (!form.email.trim())    e.email = "Email is required";
+    if (!form.role.trim())     e.role = "Job title is required";
+    if (!form.department)      e.department = "Department is required";
+    if (!form.phone.trim())    e.phone = "Phone number is required";
+    if (!form.salary.trim())   e.salary = "Gross salary is required";
     return e;
   };
 
@@ -594,17 +598,30 @@ function ManualMode() {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Bank account number" fieldKey="accountNumber" placeholder="10-digit NUBAN" form={form} errors={errors} onChange={set} />
-          <Field label="Phone number"         fieldKey="phone"          placeholder="080X XXX XXXX"   form={form} errors={errors} onChange={set} />
+          <Field label="Phone number"             fieldKey="phone"   placeholder="080X XXX XXXX"   form={form} errors={errors} onChange={set} />
+          <Field label="Gross monthly salary (₦)" fieldKey="salary"  type="number" placeholder="e.g. 350000" form={form} errors={errors} onChange={set} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Gross monthly salary (₦)" fieldKey="salary" type="number" placeholder="e.g. 350000" form={form} errors={errors} onChange={set} />
-        </div>
+        {/* Squad API banner — shown as soon as a name is typed */}
+        {form.fullName.trim() && (
+          <div className="bg-[#0D2B1F] rounded-xl p-5 flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <p className="text-emerald-400 text-[11px] font-semibold uppercase tracking-widest">Squad API · Live</p>
+            </div>
+            <p className="text-white text-[20px] font-bold leading-snug">
+              Creating an account for <span className="text-emerald-400">{form.fullName.trim()}</span> with Squad API
+            </p>
+            <p className="text-white/50 text-[12px]">
+              A dedicated virtual account will be provisioned instantly via Squad&apos;s disbursement infrastructure.
+              Account number: <span className="font-mono text-white/70">{generateAccountNumber()}</span>
+            </p>
+          </div>
+        )}
 
         <div className="bg-[#f8f8f8] rounded-xl p-3">
           <p className="text-[#828282] text-[12px] leading-relaxed">
-            Account numbers and phone numbers are encrypted at rest. Only the last 4 digits are shown in the interface. The employee will receive a verification SMS link before payday.
+            Phone numbers are encrypted at rest. The employee will receive a verification SMS link before payday.
           </p>
         </div>
       </div>
@@ -618,9 +635,9 @@ function ManualMode() {
           <div className="flex flex-col gap-2">
             {[
               "Full name and job title are correct",
-              "Account number is a valid 10-digit NUBAN",
               "Phone number can receive SMS",
               "Salary figure reflects current gross pay",
+              "Squad API will auto-generate account number",
             ].map(item => (
               <div key={item} className="flex items-start gap-2">
                 <div className="w-4 h-4 rounded border border-[#3a6e57] bg-[#dcfce7] flex items-center justify-center shrink-0 mt-0.5">

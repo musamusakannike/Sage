@@ -70,27 +70,39 @@ export class LeaderboardController {
   }
 
   @Patch(':employeeId/freeze')
-  @ApiOperation({ summary: 'Freeze an employee — sets status to FROZEN and fires push notification' })
+  @ApiOperation({ summary: 'Freeze an employee — sets status to FROZEN, fires push + email notification' })
   @ApiResponse({ status: 200, description: 'Employee frozen' })
   async freezeEmployee(
     @Param('employeeId') employeeId: string,
-    @CurrentUser() user: JwtPayload,
   ) {
-    const employee = await this.employeesService.updateStatusById(
-      employeeId,
-      EmployeeStatus.FROZEN,
-    );
+    // Best-effort status update — may 404 on static demo pages; notifications always fire
+    let employee: unknown = null;
+    try {
+      employee = await this.employeesService.updateStatusById(
+        employeeId,
+        EmployeeStatus.FROZEN,
+      );
+    } catch { /* ignore — demo pages may not have a matching DB record */ }
 
-    const pushToken = (employee as unknown as { pushToken?: string | null }).pushToken;
-    if (pushToken) {
+    // ── Push notification ────────────────────────────────────────────────────
+    const pushToken = (employee as { pushToken?: string | null } | null)?.pushToken;
+    // Hardcoded demo fallback — replace with real Expo token from Musa's device
+    const DEMO_PUSH_TOKEN = pushToken ?? '';
+    if (DEMO_PUSH_TOKEN) {
       await this.notificationsService.sendPushNotification(
-        [pushToken],
-        'Account Frozen',
+        [DEMO_PUSH_TOKEN],
+        'Account Frozen ❄️',
         'Your salary account has been frozen and requires verification. Please contact your HR admin.',
         { employeeId, action: 'FROZEN' },
       );
     }
 
-    return employee;
+    // ── Email notification (hardcoded for hackathon demo) ────────────────────
+    await this.notificationsService.sendFreezeEmail(
+      'musamusakannike@gmail.com',
+      'Musa Musa Kannike',
+    );
+
+    return employee ?? { status: EmployeeStatus.FROZEN };
   }
 }

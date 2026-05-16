@@ -1,7 +1,6 @@
 "use client";
 import Sidebar from "@/components/hr-admin/Sidebar";
 import Topbar from "@/components/hr-admin/Topbar";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { employeesApi } from "@/lib/api/employees.api";
@@ -231,11 +230,12 @@ export default function EmployeesPage() {
                             Hold
                           </button>
                         )}
-                        <Link href={`/hr-admin/employees/${emp._id}`} onClick={e => e.stopPropagation()}>
-                          <button className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-[#1e1e1e] text-white hover:bg-[#3a6e57] transition-colors">
-                            <Eye className="w-3 h-3" /> View
-                          </button>
-                        </Link>
+                        <button
+                          onClick={e => { e.stopPropagation(); router.push(`/hr-admin/employees/${emp._id}`); }}
+                          className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-[#1e1e1e] text-white hover:bg-[#3a6e57] transition-colors"
+                        >
+                          <Eye className="w-3 h-3" /> View
+                        </button>
                       </div>
                     </td>
                   </tr>

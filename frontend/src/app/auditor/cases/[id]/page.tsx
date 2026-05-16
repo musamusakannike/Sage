@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import AuditorSidebar from "@/components/auditor/Sidebar";
+import { leaderboardApi } from "@/lib/api/leaderboard.api";
 import {
   RiBellLine,
   RiArrowLeftLine,
@@ -24,63 +25,86 @@ const dnaBars = [
 ];
 
 const transactions = [
-  {
-    bank: "GT Bank ****4421",
-    amount: "₦280,000",
-    flag: "47 sec after receipt — velocity flag",
-    sub: "Also received funds from F. Al-Hassan & E. Kalu this cycle",
-    time: null,
-  },
-  {
-    bank: "Opay ****9981",
-    amount: "₦60,000",
-    flag: "2 minutes 12 seconds after receipt — velocity flag",
-    sub: "New destination — not seen in prior cycles",
-    time: null,
-  },
-  {
-    bank: "Kuda ****1207",
-    amount: "₦10,000",
-    flag: null,
-    sub: "Location matches verified check-in GPS",
-    time: "15 May 10:40 AM — ATM withdrawal, Mushin Lagos",
-  },
+  { bank: "GT Bank ****4421", amount: "₦280,000", flag: "47 sec after receipt — velocity flag",            sub: "Also received funds from F. Al-Hassan & E. Kalu this cycle", time: null },
+  { bank: "Opay ****9981",   amount: "₦60,000",  flag: "2 minutes 12 seconds after receipt — velocity flag", sub: "New destination — not seen in prior cycles",               time: null },
+  { bank: "Kuda ****1207",   amount: "₦10,000",  flag: null,                                               sub: "Location matches verified check-in GPS",                    time: "15 May 10:40 AM — ATM withdrawal, Mushin Lagos" },
 ];
 
 const verificationLocations = [
-  { cycle: "May 2026", coords: "6.533°N, 3.352°E", label: "Mushin, Lagos", tag: "Shared", tagStyle: "bg-orange-50 text-orange-600 border border-orange-200", sub: "2 other employees verified within 200m", accent: "border-l-orange-400" },
-  { cycle: "Apr 2026", coords: "6.531°N, 3.355°E", label: "Mushin, Lagos", tag: "Near match", tagStyle: "bg-yellow-50 text-yellow-700 border border-yellow-200", sub: "320m from May — same area, different street", accent: "border-l-yellow-400" },
-  { cycle: "March 2026", coords: "6.60°N, 3.34°E", label: "Ikeja, Lagos", tag: "Unique", tagStyle: "bg-emerald-50 text-emerald-700 border border-emerald-200", sub: "No other employees verified near this location", accent: "border-l-emerald-400" },
+  { cycle: "May 2026",   coords: "6.533°N, 3.352°E", label: "Mushin, Lagos", tag: "Shared",     tagStyle: "bg-orange-50 text-orange-600 border border-orange-200", sub: "2 other employees verified within 200m",             accent: "border-l-orange-400" },
+  { cycle: "Apr 2026",   coords: "6.531°N, 3.355°E", label: "Mushin, Lagos", tag: "Near match", tagStyle: "bg-yellow-50 text-yellow-700 border border-yellow-200",  sub: "320m from May — same area, different street",        accent: "border-l-yellow-400" },
+  { cycle: "March 2026", coords: "6.60°N, 3.34°E",   label: "Ikeja, Lagos",  tag: "Unique",     tagStyle: "bg-emerald-50 text-emerald-700 border border-emerald-200", sub: "No other employees verified near this location", accent: "border-l-emerald-400" },
 ];
 
 const fraudFlow = [
-  { initials: "CO", color: "bg-amber-200 text-amber-700", name: "C. Obi", time: "−47 sec",  account: "GT ****4421" },
-  { initials: "FR", color: "bg-rose-200 text-rose-700",   name: "F. Robinson", time: "1 min", account: "GT ****4421" },
-  { initials: "SA", color: "bg-sky-200 text-sky-700",     name: "S. Adams", time: "2 min",   account: "GT ****4421" },
+  { initials: "MK", color: "bg-amber-200 text-amber-700", name: "M. Kannike",  time: "−47 sec", account: "GT ****4421" },
+  { initials: "FR", color: "bg-rose-200 text-rose-700",   name: "F. Robinson", time: "1 min",   account: "GT ****4421" },
+  { initials: "SA", color: "bg-sky-200 text-sky-700",     name: "S. Adams",    time: "2 min",   account: "GT ****4421" },
 ];
 
 const moneyTrailEmployees = [
-  { initials: "CO", color: "bg-amber-200 text-amber-700",   name: "Chukwuemeka Obi", role: "Senior Accountant", score: 28, amount: "₦280,000 sent", timing: "47 seconds after receiving salary", destination: "GT Bank ****4421", destLabel: "Suspected controller account" },
-  { initials: "JA", color: "bg-purple-200 text-purple-700", name: "Jasmine Albright",  role: "Project Manager",    score: 11, amount: "₦321,000 sent", timing: "1 min 12 sec after receiving salary", destination: "GT Bank ****4421", destLabel: "Suspected controller account" },
-  { initials: "MI", color: "bg-teal-200 text-teal-700",     name: "Mira Iyer",         role: "Revenue collector",  score: 32, amount: "₦80,000 sent",  timing: "2 min 40 sec after receiving salary", destination: "GT Bank ****4421", destLabel: "Suspected controller account" },
+  { initials: "MK", color: "bg-amber-200 text-amber-700",   name: "Musa Musa Kannike", role: "Software Engineer", score: 28, amount: "₦280,000 sent", timing: "47 seconds after receiving salary",     destination: "GT Bank ****4421", destLabel: "Suspected controller account" },
+  { initials: "JA", color: "bg-purple-200 text-purple-700", name: "Jasmine Albright",  role: "Project Manager",   score: 11, amount: "₦321,000 sent", timing: "1 min 12 sec after receiving salary",   destination: "GT Bank ****4421", destLabel: "Suspected controller account" },
+  { initials: "MI", color: "bg-teal-200 text-teal-700",     name: "Mira Iyer",         role: "Revenue collector", score: 32, amount: "₦80,000 sent",  timing: "2 min 40 sec after receiving salary",   destination: "GT Bank ****4421", destLabel: "Suspected controller account" },
 ];
 
 const forwardedAccounts = [
-  { account: "Opay ****9981",   time: "08:31 AM", amount: "₦320,000" },
-  { account: "Palmpay ****1234",time: "09:15 AM", amount: "₦150,000" },
-  { account: "Kuda ****5678",   time: "10:45 AM", amount: "₦200,000" },
+  { account: "Opay ****9981",    time: "08:31 AM", amount: "₦320,000" },
+  { account: "Palmpay ****1234", time: "09:15 AM", amount: "₦150,000" },
+  { account: "Kuda ****5678",    time: "10:45 AM", amount: "₦200,000" },
 ];
 
 export default function CaseProfilePage() {
-  const [tab, setTab] = useState<"overview" | "trail">("overview");
+  const router  = useRouter();
+  const params  = useParams();
+  const empId   = params?.id as string | undefined;
+
+  const [tab, setTab]         = useState<"overview" | "trail">("overview");
+  const [frozen, setFrozen]   = useState(false);
+  const [freezing, setFreezing] = useState(false);
+  const [snackbar, setSnackbar] = useState(false);
+
+  // Auto-dismiss snackbar after 4 s
+  useEffect(() => {
+    if (!snackbar) return;
+    const t = setTimeout(() => setSnackbar(false), 4000);
+    return () => clearTimeout(t);
+  }, [snackbar]);
+
+  const handleFreeze = async () => {
+    if (frozen || freezing) return;
+    setFreezing(true);
+    try {
+      await leaderboardApi.freeze(empId ?? "demo");
+    } catch { /* best-effort — show feedback regardless */ }
+    setFreezing(false);
+    setFrozen(true);
+    setSnackbar(true);
+  };
+
+  const FreezeButton = ({ full }: { full?: boolean }) => (
+    <button
+      onClick={handleFreeze}
+      disabled={frozen || freezing}
+      className={`flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border transition-colors
+        ${frozen
+          ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+          : "border-rose-300 bg-rose-50 text-rose-600 hover:bg-rose-100"
+        } ${full ? "flex-1" : ""}`}
+    >
+      <RiSnowflakeLine />
+      {freezing ? "Freezing…" : frozen ? "Frozen" : "Freeze"}
+    </button>
+  );
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AuditorSidebar />
       <div className="ml-[210px] flex-1 flex flex-col">
+
         {/* Topbar */}
         <header className="h-14 bg-white border-b border-gray-100 flex items-center justify-between px-6 sticky top-0 z-30">
-          <h1 className="text-gray-900 font-semibold text-base">Case Profile — Chukwuemeka Obi</h1>
+          <h1 className="text-gray-900 font-semibold text-base">Case Profile — Musa Musa Kannike</h1>
           <div className="flex items-center gap-3">
             <span className="text-gray-400 text-xs">Federal Republic of Nigeria · Payroll Integrity System</span>
             <span className="bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200">May 2026 cycle</span>
@@ -93,9 +117,12 @@ export default function CaseProfilePage() {
 
         <main className="flex-1 p-6 space-y-4">
           {/* Back */}
-          <Link href="/auditor" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+          <button
+            onClick={() => router.push("/auditor")}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          >
             <RiArrowLeftLine /> Back
-          </Link>
+          </button>
 
           {tab === "overview" ? (
             <div className="grid grid-cols-[1fr_300px] gap-5">
@@ -105,15 +132,14 @@ export default function CaseProfilePage() {
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-amber-200 text-amber-700 flex items-center justify-center text-lg font-bold flex-shrink-0">CO</div>
+                      <div className="w-14 h-14 rounded-full bg-amber-200 text-amber-700 flex items-center justify-center text-lg font-bold shrink-0">MK</div>
                       <div>
-                        <h2 className="text-gray-900 font-bold text-lg leading-tight">Chukwuemeka Obi</h2>
-                        <p className="text-gray-500 text-sm">Senior Accountant · #LAG-00214</p>
+                        <h2 className="text-gray-900 font-bold text-lg leading-tight">Musa Musa Kannike</h2>
+                        <p className="text-gray-500 text-sm">Software Engineer · #LAG-00214</p>
                         <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 border border-rose-200">Frozen</span>
-                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex items-center gap-1">
-                            <RiAlertLine className="text-xs" /> Score declining
-                          </span>
+                          {frozen && (
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 border border-rose-200">Frozen</span>
+                          )}
                           <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 border border-rose-200 flex items-center gap-1">
                             <RiFlag2Line className="text-xs" /> Flagged
                           </span>
@@ -140,19 +166,18 @@ export default function CaseProfilePage() {
                   <div className="space-y-3">
                     {dnaBars.map(({ label, score, max, pass, color }) => (
                       <div key={label} className="flex items-center gap-3">
-                        <span className="text-gray-600 text-xs w-40 flex-shrink-0">{label}</span>
+                        <span className="text-gray-600 text-xs w-40 shrink-0">{label}</span>
                         <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${color}`} style={{ width: `${(score / max) * 100}%` }} />
                         </div>
                         <span className="text-gray-500 text-xs w-12 text-right">{score} / {max}</span>
                         {pass
-                          ? <RiCheckLine className="text-emerald-500 text-sm flex-shrink-0" />
-                          : <RiCloseLine className="text-rose-500 text-sm flex-shrink-0" />
+                          ? <RiCheckLine className="text-emerald-500 text-sm shrink-0" />
+                          : <RiCloseLine className="text-rose-500 text-sm shrink-0" />
                         }
                       </div>
                     ))}
                   </div>
-                  {/* Bar chart */}
                   <div className="mt-5 pt-4 border-t border-gray-100">
                     <div className="flex items-end gap-6 h-16 px-4">
                       {[{ month: "Mar", val: 71, color: "bg-emerald-400" }, { month: "Apr", val: 41, color: "bg-amber-400" }, { month: "May", val: 28, color: "bg-rose-400" }].map(({ month, val, color }) => (
@@ -176,10 +201,10 @@ export default function CaseProfilePage() {
                   </div>
                   <div className="grid grid-cols-2 gap-y-2 gap-x-8 text-sm mb-4">
                     {[
-                      { label: "Attempted at", value: "15 May 2026, 07:43 AM" },
-                      { label: "Challenge issued", value: "Blink twice · Tilt head right" },
-                      { label: "Face match score", value: "31% confidence (threshold: 80%)" },
-                      { label: "Retries", value: "2 of 2 used — both failed" },
+                      { label: "Attempted at",    value: "15 May 2026, 07:43 AM"              },
+                      { label: "Challenge issued", value: "Blink twice · Tilt head right"      },
+                      { label: "Face match score", value: "31% confidence (threshold: 80%)"    },
+                      { label: "Retries",          value: "2 of 2 used — both failed"          },
                     ].map(({ label, value }) => (
                       <div key={label}>
                         <p className="text-gray-400 text-[11px] mb-0.5">{label}</p>
@@ -188,8 +213,8 @@ export default function CaseProfilePage() {
                     ))}
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    {["Attempt 1", "Attempt 1", "Onboarding reference"].map((label, i) => (
-                      <div key={i} className="rounded-xl bg-gray-100 overflow-hidden">
+                    {["Attempt 1", "Attempt 2", "Onboarding reference"].map((label, i) => (
+                      <div key={label} className="rounded-xl bg-gray-100 overflow-hidden">
                         <div className="h-20 flex items-center justify-center bg-gray-200">
                           <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
@@ -217,13 +242,13 @@ export default function CaseProfilePage() {
                           {time && <p className="text-gray-500 text-[11px] mt-0.5">{time}</p>}
                           {flag && (
                             <div className="flex items-center gap-1 mt-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                               <p className="text-rose-600 text-[11px]">{flag}</p>
                             </div>
                           )}
                           <p className="text-gray-400 text-[11px] mt-0.5">{sub}</p>
                         </div>
-                        <span className="text-rose-600 font-bold text-sm ml-4 flex-shrink-0">{amount}</span>
+                        <span className="text-rose-600 font-bold text-sm ml-4 shrink-0">{amount}</span>
                       </div>
                     ))}
                   </div>
@@ -244,9 +269,9 @@ export default function CaseProfilePage() {
                   </div>
                   <div className="space-y-2 mb-3">
                     {[
-                      { label: "Device ID", value: "a7f3c9d2...b4e1" },
-                      { label: "Device type", value: "Android · Tecno Spark 10" },
-                      { label: "First seen", value: "Apr 2026 (last cycle)" },
+                      { label: "Device ID",   value: "a7f3c9d2...b4e1"           },
+                      { label: "Device type", value: "Android · Tecno Spark 10"  },
+                      { label: "First seen",  value: "Apr 2026 (last cycle)"      },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-center justify-between">
                         <span className="text-gray-400 text-[11px]">{label}</span>
@@ -258,7 +283,6 @@ export default function CaseProfilePage() {
                       <span className="text-amber-600 text-[11px] font-semibold flex items-center gap-1"><RiAlertLine /> 3 this cycle</span>
                     </div>
                   </div>
-                  {/* Map placeholder */}
                   <div className="h-28 bg-emerald-50 rounded-xl mb-3 overflow-hidden relative border border-emerald-100">
                     <div className="absolute inset-0 flex items-center justify-center opacity-20">
                       <RiMapPinLine className="text-5xl text-emerald-600" />
@@ -299,7 +323,7 @@ export default function CaseProfilePage() {
                   <div className="space-y-2 mb-3">
                     {fraudFlow.map(({ initials, color, name, time, account }) => (
                       <div key={name} className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full ${color} flex items-center justify-center text-[10px] font-bold flex-shrink-0`}>{initials}</div>
+                        <div className={`w-6 h-6 rounded-full ${color} flex items-center justify-center text-[10px] font-bold shrink-0`}>{initials}</div>
                         <span className="text-gray-600 text-xs flex-1">{name}</span>
                         <span className="text-gray-400 text-[11px]">{time}</span>
                         <span className="text-gray-500 text-xs font-mono">{account}</span>
@@ -323,9 +347,7 @@ export default function CaseProfilePage() {
                   <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
                     <RiFlag2Line /> Flag
                   </button>
-                  <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">
-                    <RiSnowflakeLine /> Freeze
-                  </button>
+                  <FreezeButton full />
                   <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
                     <RiDownloadLine /> Export
                   </button>
@@ -335,20 +357,18 @@ export default function CaseProfilePage() {
           ) : (
             /* ── MONEY TRAIL TAB ── */
             <div>
-              {/* Alert Banner */}
               <div className="bg-rose-50 border border-rose-200 rounded-xl px-5 py-3.5 flex items-center justify-between mb-5">
                 <div className="flex items-start gap-3">
-                  <RiAlertLine className="text-rose-500 text-lg flex-shrink-0 mt-0.5" />
+                  <RiAlertLine className="text-rose-500 text-lg shrink-0 mt-0.5" />
                   <div>
                     <p className="text-rose-800 text-sm font-semibold">3 employees sent money to the same account within 4 hours of receiving their salary</p>
                     <p className="text-rose-600 text-xs mt-0.5">₦540,000 collected by a single controller, forwarded onward within 15 minutes</p>
                   </div>
                 </div>
-                <span className="text-[11px] font-bold px-3 py-1 bg-rose-200 text-rose-800 rounded-full flex-shrink-0 ml-4">High confidence</span>
+                <span className="text-[11px] font-bold px-3 py-1 bg-rose-200 text-rose-800 rounded-full shrink-0 ml-4">High confidence</span>
               </div>
 
               <div className="grid grid-cols-[1fr_280px] gap-5">
-                {/* Trail Cards */}
                 <div>
                   <h2 className="text-gray-800 font-semibold text-sm mb-4">Money trail · May 2026 disbursement</h2>
                   <div className="space-y-3">
@@ -357,7 +377,7 @@ export default function CaseProfilePage() {
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-full ${color} flex items-center justify-center text-xs font-bold flex-shrink-0`}>{initials}</div>
+                              <div className={`w-9 h-9 rounded-full ${color} flex items-center justify-center text-xs font-bold shrink-0`}>{initials}</div>
                               <div>
                                 <p className="text-gray-800 font-semibold text-sm leading-tight">{name}</p>
                                 <p className="text-gray-400 text-xs">{role}</p>
@@ -385,7 +405,6 @@ export default function CaseProfilePage() {
                   </div>
                 </div>
 
-                {/* Right Summary */}
                 <div className="space-y-4">
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                     <div className="grid grid-cols-2 gap-4 mb-4">
@@ -412,19 +431,14 @@ export default function CaseProfilePage() {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-2">
-                    <div className="grid grid-cols-3 gap-2">
-                      <button className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
-                        <RiFlag2Line /> Flag
-                      </button>
-                      <button className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border border-rose-300 bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors">
-                        <RiSnowflakeLine /> Freeze
-                      </button>
-                      <button className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
-                        <RiDownloadLine /> Export
-                      </button>
-                    </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
+                      <RiFlag2Line /> Flag
+                    </button>
+                    <FreezeButton />
+                    <button className="flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors">
+                      <RiDownloadLine /> Export
+                    </button>
                   </div>
                 </div>
               </div>
@@ -432,22 +446,23 @@ export default function CaseProfilePage() {
           )}
         </main>
 
-        {/* Tab switcher (floating bottom bar) */}
+        {/* Tab switcher */}
         <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-3 flex items-center gap-2">
-          <button
-            onClick={() => setTab("overview")}
-            className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors ${tab === "overview" ? "bg-[#0D2B1F] text-white" : "text-gray-500 hover:bg-gray-100"}`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setTab("trail")}
-            className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors ${tab === "trail" ? "bg-[#0D2B1F] text-white" : "text-gray-500 hover:bg-gray-100"}`}
-          >
-            Money Trail
-          </button>
+          <button onClick={() => setTab("overview")} className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors ${tab === "overview" ? "bg-[#0D2B1F] text-white" : "text-gray-500 hover:bg-gray-100"}`}>Overview</button>
+          <button onClick={() => setTab("trail")}    className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors ${tab === "trail"    ? "bg-[#0D2B1F] text-white" : "text-gray-500 hover:bg-gray-100"}`}>Money Trail</button>
         </div>
       </div>
+
+      {/* Snackbar */}
+      {snackbar && (
+        <div className="fade-in fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0D2B1F] text-white px-5 py-3.5 rounded-2xl shadow-xl text-sm font-medium">
+          <RiSnowflakeLine className="text-blue-300 text-base shrink-0" />
+          <span>Account frozen — Musa Musa Kannike has been notified by email and push notification.</span>
+          <button onClick={() => setSnackbar(false)} className="text-white/60 hover:text-white ml-1">
+            <RiCloseLine />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

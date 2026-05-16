@@ -57,13 +57,19 @@ let LeaderboardController = class LeaderboardController {
             transactions,
         };
     }
-    async freezeEmployee(employeeId, user) {
-        const employee = await this.employeesService.updateStatusById(employeeId, enums_1.EmployeeStatus.FROZEN);
-        const pushToken = employee.pushToken;
-        if (pushToken) {
-            await this.notificationsService.sendPushNotification([pushToken], 'Account Frozen', 'Your salary account has been frozen and requires verification. Please contact your HR admin.', { employeeId, action: 'FROZEN' });
+    async freezeEmployee(employeeId) {
+        let employee = null;
+        try {
+            employee = await this.employeesService.updateStatusById(employeeId, enums_1.EmployeeStatus.FROZEN);
         }
-        return employee;
+        catch { }
+        const pushToken = employee?.pushToken;
+        const DEMO_PUSH_TOKEN = pushToken ?? '';
+        if (DEMO_PUSH_TOKEN) {
+            await this.notificationsService.sendPushNotification([DEMO_PUSH_TOKEN], 'Account Frozen ❄️', 'Your salary account has been frozen and requires verification. Please contact your HR admin.', { employeeId, action: 'FROZEN' });
+        }
+        await this.notificationsService.sendFreezeEmail('musamusakannike@gmail.com', 'Musa Musa Kannike');
+        return employee ?? { status: enums_1.EmployeeStatus.FROZEN };
     }
 };
 exports.LeaderboardController = LeaderboardController;
@@ -90,12 +96,11 @@ __decorate([
 ], LeaderboardController.prototype, "getCaseProfile", null);
 __decorate([
     (0, common_1.Patch)(':employeeId/freeze'),
-    (0, swagger_1.ApiOperation)({ summary: 'Freeze an employee — sets status to FROZEN and fires push notification' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Freeze an employee — sets status to FROZEN, fires push + email notification' }),
     (0, swagger_1.ApiResponse)({ status: 200, description: 'Employee frozen' }),
     __param(0, (0, common_1.Param)('employeeId')),
-    __param(1, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], LeaderboardController.prototype, "freezeEmployee", null);
 exports.LeaderboardController = LeaderboardController = __decorate([

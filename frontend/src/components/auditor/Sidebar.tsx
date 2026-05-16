@@ -1,6 +1,7 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   RiBarChart2Line,
   RiFileList3Line,
@@ -12,17 +13,46 @@ import {
   RiCalendarLine,
 } from "react-icons/ri";
 import { PiLeafFill } from "react-icons/pi";
+import { usersApi } from "@/lib/api/users.api";
+import { useAuthStore } from "@/lib/store/auth.store";
+import type { UserProfile } from "@/lib/types";
 
 const navItems = [
-  { href: "/auditor", label: "Risk Leaderboard", icon: RiBarChart2Line, badge: "26", badgeStyle: "green" },
-  { href: "/auditor/cases", label: "Active Cases", icon: RiFileList3Line, badge: "5", badgeStyle: "red" },
-  { href: "/auditor/reports", label: "Exported Reports", icon: RiDownloadCloud2Line },
-  { href: "/auditor/audit-log", label: "Audit Log", icon: RiFileTextLine },
-  { href: "/auditor/settings", label: "Settings", icon: RiSettingsLine },
+  { href: "/auditor",           label: "Risk Leaderboard",  icon: RiBarChart2Line,     badge: "26", badgeStyle: "green" },
+  { href: "/auditor/cases",     label: "Active Cases",      icon: RiFileList3Line,     badge: "5",  badgeStyle: "red"   },
+  { href: "/auditor/reports",   label: "Exported Reports",  icon: RiDownloadCloud2Line                                  },
+  { href: "/auditor/audit-log", label: "Audit Log",         icon: RiFileTextLine                                        },
+  { href: "/auditor/settings",  label: "Settings",          icon: RiSettingsLine                                        },
 ];
+
+function getInitials(name: string) {
+  const parts = name.trim().split(" ");
+  return parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+}
 
 export default function AuditorSidebar() {
   const pathname = usePathname();
+  const router   = useRouter();
+  const logout   = useAuthStore((s) => s.logout);
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    usersApi.getMe()
+      .then((res) => setProfile(res.data.data))
+      .catch(() => {/* ignore */});
+  }, []);
+
+  const displayName = profile?.name ?? "Auditor";
+  const orgName     = profile?.orgName ?? "Clouds Tech";
+  const initials    = getInitials(displayName);
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
 
   return (
     <aside className="w-[210px] min-h-screen bg-[#0D2B1F] flex flex-col fixed left-0 top-0 bottom-0 z-40">
@@ -40,12 +70,12 @@ export default function AuditorSidebar() {
       <div className="px-4 py-3 border-b border-white/10">
         <div className="bg-[#1a3d2b] rounded-lg px-3 py-2.5">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-emerald-700 rounded flex items-center justify-center flex-shrink-0">
+            <div className="w-7 h-7 bg-emerald-700 rounded flex items-center justify-center shrink-0">
               <RiBuilding2Line className="text-emerald-300 text-xs" />
             </div>
             <div className="min-w-0">
-              <p className="text-white text-xs font-semibold leading-tight truncate">Lagos State Government</p>
-              <p className="text-emerald-400 text-[10px] truncate">Ministry of Finance</p>
+              <p className="text-white text-xs font-semibold leading-tight truncate">{orgName}</p>
+              <p className="text-emerald-400 text-[10px] truncate">Payroll Integrity</p>
             </div>
           </div>
         </div>
@@ -55,7 +85,7 @@ export default function AuditorSidebar() {
       <div className="px-4 py-3 border-b border-white/10">
         <div className="bg-[#1a3d2b] rounded-lg px-3 py-2.5">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-emerald-700 rounded flex items-center justify-center flex-shrink-0">
+            <div className="w-7 h-7 bg-emerald-700 rounded flex items-center justify-center shrink-0">
               <RiCalendarLine className="text-emerald-300 text-xs" />
             </div>
             <div>
@@ -84,20 +114,14 @@ export default function AuditorSidebar() {
                       : "text-white/60 hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  <Icon
-                    className={`text-base flex-shrink-0 ${
-                      active ? "text-emerald-300" : "text-white/40 group-hover:text-white/70"
-                    }`}
-                  />
+                  <Icon className={`text-base shrink-0 ${active ? "text-emerald-300" : "text-white/40 group-hover:text-white/70"}`} />
                   <span className="flex-1 text-sm">{label}</span>
                   {badge && (
-                    <span
-                      className={`text-[10px] rounded-full px-1.5 py-0.5 font-semibold ${
-                        badgeStyle === "green"
-                          ? "bg-emerald-600/40 text-emerald-300 border border-emerald-600/50"
-                          : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                      }`}
-                    >
+                    <span className={`text-[10px] rounded-full px-1.5 py-0.5 font-semibold ${
+                      badgeStyle === "green"
+                        ? "bg-emerald-600/40 text-emerald-300 border border-emerald-600/50"
+                        : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                    }`}>
                       {badge}
                     </span>
                   )}
@@ -111,20 +135,21 @@ export default function AuditorSidebar() {
       {/* User */}
       <div className="px-4 py-4 border-t border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            JS
+          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-semibold truncate">Jared Smith</p>
-            <p className="text-white/40 text-[10px]">Senior Auditor</p>
+            <p className="text-white text-xs font-semibold truncate">{displayName}</p>
+            <p className="text-white/40 text-[10px]">Auditor · {orgName}</p>
           </div>
-          <button className="text-white/30 hover:text-white/70 transition-colors flex items-center gap-1">
+          <button
+            onClick={handleLogout}
+            className="text-white/30 hover:text-white/70 transition-colors"
+            title="Logout"
+          >
             <RiLogoutBoxLine className="text-sm" />
           </button>
         </div>
-        <button className="mt-2 w-full text-white/30 hover:text-white/60 text-[11px] text-left px-0.5 transition-colors">
-          Logout →
-        </button>
       </div>
     </aside>
   );
