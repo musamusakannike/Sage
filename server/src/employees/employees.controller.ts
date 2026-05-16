@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -36,6 +37,17 @@ import { UserRole, EmployeeStatus } from '../common/enums';
 @Controller('employees')
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
+
+  @Get('me')
+  @Roles(UserRole.EMPLOYEE)
+  @ApiOperation({ summary: 'Get the employee record for the currently authenticated employee' })
+  @ApiResponse({ status: 200, description: 'Employee record' })
+  @ApiResponse({ status: 404, description: 'Employee record not found' })
+  async getMe(@CurrentUser() user: JwtPayload) {
+    const employee = await this.employeesService.findByEmail(user.email);
+    if (!employee) throw new NotFoundException('Employee record not found.');
+    return employee;
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all employees with optional filter and search' })

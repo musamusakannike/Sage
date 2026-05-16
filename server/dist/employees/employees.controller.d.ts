@@ -5,6 +5,13 @@ import { EmployeeStatus } from '../common/enums';
 export declare class EmployeesController {
     private readonly employeesService;
     constructor(employeesService: EmployeesService);
+    getMe(user: JwtPayload): Promise<import("mongoose").Document<unknown, {}, import("./schemas/employee.schema").Employee, {}, import("mongoose").DefaultSchemaOptions> & import("./schemas/employee.schema").Employee & {
+        _id: import("mongoose").Types.ObjectId;
+    } & {
+        __v: number;
+    } & {
+        id: string;
+    }>;
     findAll(user: JwtPayload, status?: EmployeeStatus, search?: string, page?: string, limit?: string): Promise<{
         data: import("./schemas/employee.schema").EmployeeDocument[];
         total: number;

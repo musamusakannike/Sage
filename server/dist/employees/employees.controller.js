@@ -28,6 +28,12 @@ let EmployeesController = class EmployeesController {
     constructor(employeesService) {
         this.employeesService = employeesService;
     }
+    async getMe(user) {
+        const employee = await this.employeesService.findByEmail(user.email);
+        if (!employee)
+            throw new common_1.NotFoundException('Employee record not found.');
+        return employee;
+    }
     findAll(user, status, search, page = '1', limit = '20') {
         return this.employeesService.findAll(user.orgId, status, search, parseInt(page, 10), parseInt(limit, 10));
     }
@@ -45,6 +51,17 @@ let EmployeesController = class EmployeesController {
     }
 };
 exports.EmployeesController = EmployeesController;
+__decorate([
+    (0, common_1.Get)('me'),
+    (0, roles_decorator_1.Roles)(enums_1.UserRole.EMPLOYEE),
+    (0, swagger_1.ApiOperation)({ summary: 'Get the employee record for the currently authenticated employee' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Employee record' }),
+    (0, swagger_1.ApiResponse)({ status: 404, description: 'Employee record not found' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], EmployeesController.prototype, "getMe", null);
 __decorate([
     (0, common_1.Get)(),
     (0, swagger_1.ApiOperation)({ summary: 'List all employees with optional filter and search' }),

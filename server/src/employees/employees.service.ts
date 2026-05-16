@@ -91,6 +91,15 @@ export class EmployeesService {
     return { ...employee, _id: String(employee._id) } as unknown as EmployeeDocument;
   }
 
+  async findByEmail(email: string): Promise<EmployeeDocument | null> {
+    const employee = await this.employeeModel
+      .findOne({ email: email.toLowerCase() })
+      .lean()
+      .exec();
+    if (!employee) return null;
+    return { ...employee, _id: String(employee._id) } as unknown as EmployeeDocument;
+  }
+
   async updateStatus(
     id: string,
     orgId: string,
