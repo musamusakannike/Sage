@@ -50,15 +50,14 @@ export class EmployeesService {
     search?: string,
     page = 1,
     limit = 20,
+    allOrgs = false,
   ): Promise<{ data: EmployeeDocument[]; total: number }> {
-    if (!orgId || !Types.ObjectId.isValid(orgId)) {
+    if (!allOrgs && (!orgId || !Types.ObjectId.isValid(orgId))) {
       return { data: [], total: 0 };
     }
 
-    const filter: Record<string, unknown> = {
-      orgId: new Types.ObjectId(orgId),
-      deletedAt: false,
-    };
+    const filter: Record<string, unknown> = { deletedAt: false };
+    if (!allOrgs) filter.orgId = new Types.ObjectId(orgId);
     if (status) filter.status = status;
     if (search) {
       filter['$or'] = [
@@ -111,6 +110,18 @@ export class EmployeesService {
         { status },
         { new: true },
       )
+      .lean()
+      .exec();
+    if (!employee) throw new NotFoundException('Employee not found.');
+    return { ...employee, _id: String(employee._id) } as unknown as EmployeeDocument;
+  }
+
+  async updateStatusById(
+    id: string,
+    status: EmployeeStatus,
+  ): Promise<EmployeeDocument> {
+    const employee = await this.employeeModel
+      .findByIdAndUpdate(id, { status }, { new: true })
       .lean()
       .exec();
     if (!employee) throw new NotFoundException('Employee not found.');

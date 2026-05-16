@@ -75,7 +75,7 @@ let CasesService = class CasesService {
         return existing.save();
     }
     async getLeaderboard(orgId, cycle) {
-        const employees = await this.employeesService.findAll(orgId);
+        const employees = await this.employeesService.findAll(orgId, undefined, undefined, 1, 500, true);
         const cases = await this.caseModel
             .find({ orgId: new mongoose_2.Types.ObjectId(orgId), status: enums_1.CaseStatus.OPEN })
             .lean()

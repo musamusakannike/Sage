@@ -19,6 +19,7 @@ const cases_service_1 = require("./cases.service");
 const employees_service_1 = require("../employees/employees.service");
 const verification_service_1 = require("../verification/verification.service");
 const transactions_service_1 = require("../transactions/transactions.service");
+const notifications_service_1 = require("../notifications/notifications.service");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const roles_decorator_1 = require("../common/decorators/roles.decorator");
@@ -29,11 +30,13 @@ let LeaderboardController = class LeaderboardController {
     employeesService;
     verificationService;
     transactionsService;
-    constructor(casesService, employeesService, verificationService, transactionsService) {
+    notificationsService;
+    constructor(casesService, employeesService, verificationService, transactionsService, notificationsService) {
         this.casesService = casesService;
         this.employeesService = employeesService;
         this.verificationService = verificationService;
         this.transactionsService = transactionsService;
+        this.notificationsService = notificationsService;
     }
     getLeaderboard(user, cycle) {
         return this.casesService.getLeaderboard(user.orgId, cycle);
@@ -53,6 +56,14 @@ let LeaderboardController = class LeaderboardController {
             sessions,
             transactions,
         };
+    }
+    async freezeEmployee(employeeId, user) {
+        const employee = await this.employeesService.updateStatusById(employeeId, enums_1.EmployeeStatus.FROZEN);
+        const pushToken = employee.pushToken;
+        if (pushToken) {
+            await this.notificationsService.sendPushNotification([pushToken], 'Account Frozen', 'Your salary account has been frozen and requires verification. Please contact your HR admin.', { employeeId, action: 'FROZEN' });
+        }
+        return employee;
     }
 };
 exports.LeaderboardController = LeaderboardController;
@@ -77,6 +88,16 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], LeaderboardController.prototype, "getCaseProfile", null);
+__decorate([
+    (0, common_1.Patch)(':employeeId/freeze'),
+    (0, swagger_1.ApiOperation)({ summary: 'Freeze an employee — sets status to FROZEN and fires push notification' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Employee frozen' }),
+    __param(0, (0, common_1.Param)('employeeId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], LeaderboardController.prototype, "freezeEmployee", null);
 exports.LeaderboardController = LeaderboardController = __decorate([
     (0, swagger_1.ApiTags)('leaderboard'),
     (0, swagger_1.ApiBearerAuth)(),
@@ -86,6 +107,7 @@ exports.LeaderboardController = LeaderboardController = __decorate([
     __metadata("design:paramtypes", [cases_service_1.CasesService,
         employees_service_1.EmployeesService,
         verification_service_1.VerificationService,
-        transactions_service_1.TransactionsService])
+        transactions_service_1.TransactionsService,
+        notifications_service_1.NotificationsService])
 ], LeaderboardController);
 //# sourceMappingURL=leaderboard.controller.js.map

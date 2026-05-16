@@ -11,6 +11,7 @@ export declare class Employee {
     dnaScore: number | null;
     status: EmployeeStatus;
     lastVerifiedAt: Date | null;
+    pushToken: string | null;
     deletedAt: boolean;
 }
 export declare const EmployeeSchema: import("mongoose").Schema<Employee, import("mongoose").Model<Employee, any, any, any, any, any, Employee>, {}, {}, {}, {}, import("mongoose").DefaultSchemaOptions, Employee, import("mongoose").Document<unknown, {}, Employee, {
@@ -95,6 +96,15 @@ export declare const EmployeeSchema: import("mongoose").Schema<Employee, import(
         id: string;
     }> | undefined;
     lastVerifiedAt?: import("mongoose").SchemaDefinitionProperty<Date | null, Employee, import("mongoose").Document<unknown, {}, Employee, {
+        id: string;
+    }, import("mongoose").DefaultSchemaOptions> & Omit<Employee & {
+        _id: Types.ObjectId;
+    } & {
+        __v: number;
+    }, "id"> & {
+        id: string;
+    }> | undefined;
+    pushToken?: import("mongoose").SchemaDefinitionProperty<string | null, Employee, import("mongoose").Document<unknown, {}, Employee, {
         id: string;
     }, import("mongoose").DefaultSchemaOptions> & Omit<Employee & {
         _id: Types.ObjectId;

@@ -7,6 +7,7 @@ import { Case, CaseSchema } from './schemas/case.schema';
 import { EmployeesModule } from '../employees/employees.module';
 import { VerificationModule } from '../verification/verification.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
     EmployeesModule,
     VerificationModule,
     TransactionsModule,
+    NotificationsModule,
   ],
   controllers: [CasesController, LeaderboardController],
   providers: [CasesService],

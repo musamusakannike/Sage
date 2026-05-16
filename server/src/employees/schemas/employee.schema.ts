@@ -37,6 +37,9 @@ export class Employee {
   @Prop({ type: Date, default: null })
   lastVerifiedAt: Date | null;
 
+  @Prop({ type: String, default: null })
+  pushToken: string | null;
+
   @Prop({ type: Boolean, default: false })
   deletedAt: boolean;
 }

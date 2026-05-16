@@ -23,6 +23,7 @@ let Employee = class Employee {
     dnaScore;
     status;
     lastVerifiedAt;
+    pushToken;
     deletedAt;
 };
 exports.Employee = Employee;
@@ -66,6 +67,10 @@ __decorate([
     (0, mongoose_1.Prop)({ type: Date, default: null }),
     __metadata("design:type", Object)
 ], Employee.prototype, "lastVerifiedAt", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: String, default: null }),
+    __metadata("design:type", Object)
+], Employee.prototype, "pushToken", void 0);
 __decorate([
     (0, mongoose_1.Prop)({ type: Boolean, default: false }),
     __metadata("design:type", Boolean)

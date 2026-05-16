@@ -2,13 +2,16 @@ import { CasesService } from './cases.service';
 import { EmployeesService } from '../employees/employees.service';
 import { VerificationService } from '../verification/verification.service';
 import { TransactionsService } from '../transactions/transactions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { JwtPayload } from '../common/decorators/current-user.decorator';
+import { EmployeeStatus } from '../common/enums';
 export declare class LeaderboardController {
     private readonly casesService;
     private readonly employeesService;
     private readonly verificationService;
     private readonly transactionsService;
-    constructor(casesService: CasesService, employeesService: EmployeesService, verificationService: VerificationService, transactionsService: TransactionsService);
+    private readonly notificationsService;
+    constructor(casesService: CasesService, employeesService: EmployeesService, verificationService: VerificationService, transactionsService: TransactionsService, notificationsService: NotificationsService);
     getLeaderboard(user: JwtPayload, cycle?: string): Promise<unknown[]>;
     getCaseProfile(employeeId: string, user: JwtPayload): Promise<{
         employee: {
@@ -29,8 +32,9 @@ export declare class LeaderboardController {
             roleTitle: string;
             email: string | null;
             dnaScore: number | null;
-            status: import("../common/enums").EmployeeStatus;
+            status: EmployeeStatus;
             lastVerifiedAt: Date | null;
+            pushToken: string | null;
             deletedAt: boolean;
             __v: number;
             id: string;
@@ -49,5 +53,12 @@ export declare class LeaderboardController {
         } & {
             id: string;
         })[];
+    }>;
+    freezeEmployee(employeeId: string, user: JwtPayload): Promise<import("mongoose").Document<unknown, {}, import("../employees/schemas/employee.schema").Employee, {}, import("mongoose").DefaultSchemaOptions> & import("../employees/schemas/employee.schema").Employee & {
+        _id: import("mongoose").Types.ObjectId;
+    } & {
+        __v: number;
+    } & {
+        id: string;
     }>;
 }

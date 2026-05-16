@@ -1,14 +1,15 @@
 "use client";
 import Sidebar from "@/components/hr-admin/Sidebar";
 import Topbar from "@/components/hr-admin/Topbar";
-import { useState, useRef } from "react";
+import Link from "next/link";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   UploadCloud, Download, FileText, CheckCircle2, AlertTriangle,
-  Check, X, UserPlus, ChevronDown, Mail,
+  Check, X, UserPlus, ChevronDown, Mail, Eye,
 } from "lucide-react";
 import { authApi } from "@/lib/api/auth.api";
 import { employeesApi } from "@/lib/api/employees.api";
-import { getApiErrorMessage } from "@/lib/utils";
+import { getApiErrorMessage, extractId } from "@/lib/utils";
 import type { Employee } from "@/lib/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -315,6 +316,119 @@ function CsvMode() {
   );
 }
 
+// ─── Employee List Section ────────────────────────────────────────────────────
+
+const AVATAR_COLORS = [
+  "bg-amber-100 text-amber-700", "bg-orange-100 text-orange-700",
+  "bg-lime-100 text-lime-700",   "bg-purple-100 text-purple-700",
+  "bg-rose-100 text-rose-700",   "bg-teal-100 text-teal-700",
+  "bg-sky-100 text-sky-700",     "bg-violet-100 text-violet-700",
+  "bg-emerald-100 text-emerald-700",
+];
+function avatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[h];
+}
+function getInitials(name: string) {
+  const parts = name.trim().split(" ");
+  return parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+}
+
+function EmployeeListSection({ refreshKey }: { refreshKey: number }) {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await employeesApi.list({ limit: 100 });
+      const { data, total } = res.data.data;
+      setEmployees(data.map(e => ({ ...e, _id: extractId(e._id) })));
+      setTotal(total);
+    } catch {
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  return (
+    <div className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#f0f0f0] flex items-center justify-between">
+        <div>
+          <h3 className="text-[#1e1e1e] text-[14px] font-bold">Current Employee Roster</h3>
+          {!loading && <p className="text-[#828282] text-[12px] mt-0.5">{total} employees on record</p>}
+        </div>
+        <Link href="/hr-admin/employees">
+          <button className="flex items-center gap-1.5 text-[12px] text-[#4e4e4e] hover:text-[#1e1e1e] border border-[#e0e3dc] hover:bg-[#f0f2f6] px-3 py-1.5 rounded-lg transition-colors font-medium">
+            <Eye className="w-3.5 h-3.5" /> View all
+          </button>
+        </Link>
+      </div>
+      <table className="w-full">
+        <thead>
+          <tr className="bg-[#f8f8f8] border-b border-[#f0f0f0]">
+            <th className="text-left text-[11px] text-[#828282] font-semibold uppercase tracking-wide py-3 px-5">Employee</th>
+            <th className="text-left text-[11px] text-[#828282] font-semibold uppercase tracking-wide py-3 pr-4">Role</th>
+            <th className="text-left text-[11px] text-[#828282] font-semibold uppercase tracking-wide py-3 pr-4">Account</th>
+            <th className="text-left text-[11px] text-[#828282] font-semibold uppercase tracking-wide py-3 pr-4">DNA Score</th>
+            <th className="text-left text-[11px] text-[#828282] font-semibold uppercase tracking-wide py-3 pr-4">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr><td colSpan={5} className="py-10 text-center text-[#828282] text-[13px]">Loading employees…</td></tr>
+          ) : employees.length === 0 ? (
+            <tr><td colSpan={5} className="py-10 text-center text-[#828282] text-[13px]">No employees yet. Add one above.</td></tr>
+          ) : employees.map(emp => (
+            <tr key={emp._id} className="border-b border-[#f0f0f0] hover:bg-[#f8f8f8] transition-colors">
+              <td className="py-3 px-5">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${avatarColor(emp.name)}`}>
+                    {getInitials(emp.name)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[#1e1e1e] text-[13px] font-medium truncate">{emp.name}</p>
+                    <p className="text-[#828282] text-[11px]">{emp._id.slice(-8).toUpperCase()}</p>
+                  </div>
+                </div>
+              </td>
+              <td className="py-3 pr-4 text-[#4e4e4e] text-[13px]">{emp.roleTitle || "—"}</td>
+              <td className="py-3 pr-4 text-[#828282] text-[13px] font-mono">
+                {emp.accountNumber ? `**** ${emp.accountNumber.slice(-4)}` : "—"}
+              </td>
+              <td className="py-3 pr-4">
+                {emp.dnaScore === null ? (
+                  <span className="text-[#828282] text-[12px]">—</span>
+                ) : (
+                  <span className={`text-[12px] font-bold px-2 py-0.5 rounded-lg border ${
+                    emp.dnaScore < 40 ? "text-[#b91c1c] bg-[#fee2e2] border-[#fecaca]"
+                    : emp.dnaScore < 65 ? "text-[#b45309] bg-[#fef3c7] border-[#fde68a]"
+                    : "text-[#158079] bg-[#dcfce7] border-[#bbf7d0]"
+                  }`}>{emp.dnaScore}</span>
+                )}
+              </td>
+              <td className="py-3 pr-4">
+                {emp.status === "FROZEN"  && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#fee2e2] text-[#b91c1c]">Frozen</span>}
+                {emp.status === "REVIEW"  && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#fef3c7] text-[#b45309]">Review</span>}
+                {emp.status === "CLEAR"   && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#dcfce7] text-[#158079]">Clear</span>}
+                {emp.status === "PENDING" && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#f0f0f0] text-[#828282]">Pending</span>}
+                {emp.status === "FLAGGED" && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#fee2e2] text-[#b91c1c]">Flagged</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── Manual Form Mode ─────────────────────────────────────────────────────────
 
 const departments = ["Finance", "Accounts", "Budget", "Admin", "Procurement", "Audit", "IT"];
@@ -353,6 +467,7 @@ function ManualMode() {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<FormState>>({});
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }));
@@ -379,6 +494,7 @@ function ManualMode() {
     try {
       await authApi.invite({ name: form.fullName, email: form.email, role: form.userRole });
       setSubmitted(true);
+      setRefreshKey(k => k + 1);
     } catch (err) {
       setApiError(getApiErrorMessage(err));
     } finally {
@@ -390,35 +506,39 @@ function ManualMode() {
 
   if (submitted) {
     return (
-      <div className="flex flex-col items-center justify-center bg-white rounded-xl border border-[#f0f0f0] p-16 gap-4">
-        <div className="w-16 h-16 rounded-full bg-[#dcfce7] flex items-center justify-center">
-          <CheckCircle2 className="w-8 h-8 text-[#158079]" />
-        </div>
-        <h3 className="text-[#1e1e1e] text-[18px] font-bold">{form.fullName} added successfully</h3>
-        <div className="flex flex-col gap-2 items-center max-w-sm">
-          <p className="text-[#828282] text-[14px] text-center">
-            A welcome email has been sent to <strong className="text-[#1e1e1e]">{form.email}</strong>.
-          </p>
-          <div className="flex items-center gap-2 bg-[#f8f8f8] rounded-xl px-4 py-2.5 w-full">
-            <Mail className="w-4 h-4 text-[#3a6e57] shrink-0" />
-            <p className="text-[#4e4e4e] text-[12px]">
-              They can sign in at any time using their email and a confirmation code — no password needed.
-            </p>
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col items-center justify-center bg-white rounded-xl border border-[#f0f0f0] p-16 gap-4">
+          <div className="w-16 h-16 rounded-full bg-[#dcfce7] flex items-center justify-center">
+            <CheckCircle2 className="w-8 h-8 text-[#158079]" />
           </div>
+          <h3 className="text-[#1e1e1e] text-[18px] font-bold">{form.fullName} added successfully</h3>
+          <div className="flex flex-col gap-2 items-center max-w-sm">
+            <p className="text-[#828282] text-[14px] text-center">
+              A welcome email has been sent to <strong className="text-[#1e1e1e]">{form.email}</strong>.
+            </p>
+            <div className="flex items-center gap-2 bg-[#f8f8f8] rounded-xl px-4 py-2.5 w-full">
+              <Mail className="w-4 h-4 text-[#3a6e57] shrink-0" />
+              <p className="text-[#4e4e4e] text-[12px]">
+                They can sign in at any time using their email and a confirmation code — no password needed.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleReset}
+            className="h-[42px] px-5 rounded-xl bg-[#3a6e57] hover:bg-[#2d5745] text-white text-[14px] font-medium transition-colors mt-2"
+          >
+            Add another
+          </button>
         </div>
-        <button
-          onClick={handleReset}
-          className="h-[42px] px-5 rounded-xl bg-[#3a6e57] hover:bg-[#2d5745] text-white text-[14px] font-medium transition-colors mt-2"
-        >
-          Add another
-        </button>
+        <EmployeeListSection refreshKey={refreshKey} />
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} noValidate className="grid grid-cols-[1fr_300px] gap-5 items-start">
-      {/* Left — form */}
+      {/* Left — form + roster */}
+      <div className="flex flex-col gap-5">
       <div className="bg-white rounded-xl border border-[#f0f0f0] p-6 flex flex-col gap-5">
         <div>
           <h2 className="text-[#1e1e1e] text-[15px] font-bold">Employee Details</h2>
@@ -487,6 +607,8 @@ function ManualMode() {
             Account numbers and phone numbers are encrypted at rest. Only the last 4 digits are shown in the interface. The employee will receive a verification SMS link before payday.
           </p>
         </div>
+      </div>
+      <EmployeeListSection refreshKey={refreshKey} />
       </div>
 
       {/* Right — summary + submit */}
