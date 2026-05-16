@@ -1,220 +1,352 @@
 "use client";
 import Sidebar from "@/components/hr-admin/Sidebar";
 import Topbar from "@/components/hr-admin/Topbar";
-import {
-  RiCheckboxCircleLine,
-  RiTimeLine,
-  RiErrorWarningLine,
-  RiSearchLine,
-  RiMessageLine,
-  RiAddLine,
-  RiEditLine,
-  RiMessage2Line,
-} from "react-icons/ri";
+import { useRouter } from "next/navigation";
+import { Search, Plus, Mail, Pencil } from "lucide-react";
+import { useEffect, useState } from "react";
+import { usersApi } from "@/lib/api/users.api";
+import { employeesApi } from "@/lib/api/employees.api";
+import { payrollApi } from "@/lib/api/payroll.api";
+import type { Employee, UserProfile, PayrollSchedule } from "@/lib/types";
 
-const employees = [
-  { initials: "LA", color: "bg-amber-200 text-amber-700", name: "Liam Anderson", id: "LAG-00198", role: "Records Officer", dna: 28, status: "Frozen" },
-  { initials: "MA", color: "bg-orange-200 text-orange-700", name: "Maya Thompson", id: "LAG-00199", role: "Data Analyst", dna: 28, status: "Frozen" },
-  { initials: "KA", color: "bg-lime-200 text-lime-700", name: "Kevin Adams", id: "LAG-00200", role: "Project Manager", dna: 28, status: "Frozen" },
-  { initials: "JA", color: "bg-purple-200 text-purple-700", name: "Jessica Allen", id: "LAG-00201", role: "UX Designer", dna: 52, status: "Review" },
-  { initials: "RA", color: "bg-rose-200 text-rose-700", name: "Ravi Kumar", id: "LAG-00202", role: "Software Engineer", dna: 67, status: "Review" },
-  { initials: "NA", color: "bg-teal-200 text-teal-700", name: "Nina Patel", id: "LAG-00203", role: "Marketing Specialist", dna: 28, status: "Frozen" },
-  { initials: "SA", color: "bg-sky-200 text-sky-700", name: "Samuel Lee", id: "LAG-00204", role: "Sales Associate", dna: 82, status: "Clear" },
-  { initials: "TA", color: "bg-violet-200 text-violet-700", name: "Tina Chen", id: "LAG-00205", role: "Customer Support", dna: 82, status: "Clear" },
-  { initials: "PA", color: "bg-emerald-200 text-emerald-700", name: "Peter Brown", id: "LAG-00206", role: "Financial Analyst", dna: 82, status: "Clear" },
-];
+interface DashboardStats {
+  totalEmployees: number;
+  cleared: number;
+  review: number;
+  frozen: number;
+}
 
-const statusBadge = (status: string) => {
-  if (status === "Frozen") return <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-500 border border-rose-200">Frozen</span>;
-  if (status === "Review") return <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Review</span>;
-  return <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Clear</span>;
-};
+function getInitials(name: string): string {
+  const parts = name.split(" ");
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
 
-const dnaColor = (score: number) => {
-  if (score < 40) return "text-rose-500 bg-rose-50";
-  if (score < 65) return "text-amber-600 bg-amber-50";
-  return "text-emerald-600 bg-emerald-50";
-};
+function StatusBadge({ status }: { status: string }) {
+  if (status === "FROZEN") return <span className="text-[12px] font-medium px-[6px] py-1 rounded-full bg-[#fee2e2] text-[#b91c1c] whitespace-nowrap">Frozen</span>;
+  if (status === "REVIEW") return <span className="text-[12px] font-medium px-[6px] py-1 rounded-full bg-[#fef3c7] text-[#b45309] whitespace-nowrap">Review</span>;
+  if (status === "CLEAR") return <span className="text-[12px] font-medium px-[6px] py-1 rounded-full bg-[#dcfce7] text-[#158079] whitespace-nowrap">Clear</span>;
+  return <span className="text-[12px] font-medium px-[6px] py-1 rounded-full bg-[#e5e7eb] text-[#6b7280] whitespace-nowrap">Pending</span>;
+}
+
+function DnaBadge({ score }: { score: number }) {
+  const cls = score < 40
+    ? "text-[#b91c1c] bg-[#fee2e2]"
+    : score < 65
+    ? "text-[#b45309] bg-[#fef3c7]"
+    : "text-[#158079] bg-[#dcfce7]";
+  return <span className={`text-[12px] font-medium px-[5px] py-0.5 rounded-full whitespace-nowrap ${cls}`}>{score}</span>;
+}
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalEmployees: 0,
+    cleared: 0,
+    review: 0,
+    frozen: 0,
+  });
+  const [payrollSchedule, setPayrollSchedule] = useState<PayrollSchedule | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch user profile
+        const userRes = await usersApi.getMe();
+        setUserProfile(userRes.data.data);
+
+        // Fetch all employees
+        const employeesRes = await employeesApi.list({ limit: 100 });
+        const employeeData = employeesRes.data.data.data;
+        setEmployees(employeeData);
+
+        // Calculate stats
+        const totalEmployees = employeesRes.data.data.total;
+        const cleared = employeeData.filter(e => e.status === "CLEAR").length;
+        const review = employeeData.filter(e => e.status === "REVIEW").length;
+        const frozen = employeeData.filter(e => e.status === "FROZEN").length;
+        
+        setStats({
+          totalEmployees,
+          cleared,
+          review,
+          frozen,
+        });
+
+        // Fetch payroll schedule
+        const payrollRes = await payrollApi.getSchedule();
+        setPayrollSchedule(payrollRes.data.data);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-[#f0f2f6]">
+        <Sidebar />
+        <div className="ml-[250px] flex-1 flex flex-col min-w-0">
+          <Topbar title="Dashboard" />
+          <main className="flex-1 p-6 flex items-center justify-center">
+            <p className="text-[#828282] text-[14px]">Loading dashboard...</p>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  const orgName = userProfile?.orgName || "Organization";
+  const verifiedCount = stats.cleared;
+  const pendingCount = stats.totalEmployees - stats.cleared;
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-[#f0f2f6]">
       <Sidebar />
-      <div className="ml-[210px] flex-1 flex flex-col">
+      <div className="ml-[250px] flex-1 flex flex-col min-w-0">
         <Topbar title="Dashboard" />
-        <main className="flex-1 p-6 space-y-5">
+        <main className="flex-1 p-6 flex flex-col gap-6">
 
           {/* Hero Banner */}
-          <div className="bg-[#0D2B1F] rounded-2xl px-8 py-6 flex items-center justify-between relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0D2B1F] via-[#0D2B1F] to-emerald-900/40 pointer-events-none" />
-            <div className="relative z-10">
-              <p className="text-emerald-400 text-xs font-medium mb-1 uppercase tracking-wider">Next Payroll Disbursement</p>
-              <h2 className="text-white text-2xl font-bold mb-1">May 2026 Salary Cycle</h2>
-              <p className="text-white/50 text-sm mb-3">Scheduled for 25 May 2026 — via Squad Disburse</p>
-              <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-medium px-3 py-1.5 rounded-full">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                Active · 47 employees verified
+          <div className="bg-[#0f172a] rounded-xl p-6 flex items-center gap-2 shrink-0">
+            <div className="flex flex-1 flex-col gap-2 min-w-0">
+              <p className="text-white text-[14px] font-normal">Next Payroll Disbursement</p>
+              <div className="flex flex-col gap-1">
+                <p className="text-white text-[22px] font-bold leading-tight">May 2026 Salary Cycle</p>
+                <p className="text-white text-[14px] font-normal">Scheduled for 25 May 2026 — via Squad Disburse</p>
+              </div>
+              <span className="inline-flex items-center gap-1 bg-[#dcfce7] text-[#158079] text-[12px] font-medium px-[6px] py-1 rounded-full self-start">
+                <span className="w-1.5 h-1.5 bg-[#158079] rounded-full shrink-0" />
+                Active · {verifiedCount} employees verified
               </span>
             </div>
-            <div className="relative z-10 flex items-center gap-3">
+            <div className="flex items-center gap-px shrink-0">
               {[{ val: "05", label: "Days" }, { val: "14", label: "Hours" }, { val: "22", label: "Minutes" }].map(({ val, label }, i) => (
-                <div key={i} className="flex flex-col items-center">
-                  <div className="bg-white/10 border border-white/10 rounded-xl w-16 h-16 flex items-center justify-center">
-                    <span className="text-white text-2xl font-bold tabular-nums">{val}</span>
+                <div key={label} className="flex items-center">
+                  <div className="bg-white/10 rounded-lg w-[80px] p-3 flex flex-col items-center gap-1">
+                    <span className="text-white text-[32px] font-semibold leading-none tabular-nums">{val}</span>
+                    <span className="text-[#828282] text-[14px] font-medium">{label}</span>
                   </div>
-                  <span className="text-white/40 text-[10px] mt-1 uppercase tracking-wide">{label}</span>
-                  {i < 2 && <span className="absolute text-white/40 text-2xl font-light" style={{ marginLeft: "68px", marginTop: "-22px" }}>:</span>}
+                  {i < 2 && <span className="text-white text-[32px] font-semibold px-px">:</span>}
                 </div>
               ))}
             </div>
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-2 shrink-0">
             {[
-              { label: "Total Employees", value: "90", color: "text-gray-900", border: "border-b-emerald-500" },
-              { label: "Verified & Cleared", value: "47", color: "text-emerald-600", border: "border-b-emerald-500" },
-              { label: "Pending Review", value: "8", color: "text-amber-500", border: "border-b-amber-400" },
-              { label: "Frozen — Action Needed", value: "3", color: "text-rose-500", border: "border-b-rose-500" },
-            ].map(({ label, value, color, border }) => (
-              <div key={label} className={`bg-white rounded-xl p-5 border border-gray-100 border-b-2 ${border} shadow-sm`}>
-                <p className="text-gray-400 text-xs font-medium mb-2">{label}</p>
-                <p className={`text-3xl font-bold ${color}`}>{value}</p>
+              { label: "Total Employees",      value: String(stats.totalEmployees), color: "text-[#3a6e57]", bar: "bg-[#158079]" },
+              { label: "Verified & Cleared",   value: String(stats.cleared), color: "text-[#158079]", bar: "bg-[#158079]" },
+              { label: "Pending Review",        value: String(stats.review),  color: "text-[#b45309]", bar: "bg-[#b45309]" },
+              { label: "Frozen - Action Needed", value: String(stats.frozen), color: "text-[#b91c1c]", bar: "bg-[#b91c1c]" },
+            ].map(({ label, value, color, bar }) => (
+              <div key={label} className="relative bg-white rounded-xl pb-4 pt-3 px-3 border border-[#f0f0f0] overflow-hidden">
+                <p className="text-[#828282] text-[12px] font-medium mb-2 whitespace-nowrap">{label}</p>
+                <p className={`text-[32px] font-extrabold leading-[1.24] ${color}`}>{value}</p>
+                <div className={`absolute bottom-0 left-0 right-0 h-[4px] ${bar}`} />
               </div>
             ))}
           </div>
 
-          {/* SMS Banner */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <RiMessageLine className="text-emerald-600 text-lg flex-shrink-0" />
-              <div>
-                <p className="text-emerald-800 text-sm font-semibold">Verification SMS invites scheduled for 24 May 2026, 09:00 AM</p>
-                <p className="text-emerald-600 text-xs">58 unique links will be sent to employees — 24 hours before payday</p>
-              </div>
+          {/* Email Notification Banner */}
+          <div className="bg-[#dcfce7] rounded-xl px-3 py-3 flex items-center gap-2 shrink-0">
+            <div className="w-6 h-6 shrink-0 flex items-center justify-center">
+              <Mail className="w-5 h-5 text-[#158079]" strokeWidth={2} />
             </div>
-            <button className="bg-[#0D2B1F] hover:bg-emerald-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+            <div className="flex flex-1 flex-col gap-1 min-w-0">
+              <p className="text-[#158079] text-[14px] font-medium leading-tight">
+                Verification email invites scheduled for 24 May 2026, 09:00 AM
+              </p>
+              <p className="text-[#158079] text-[12px] font-normal">
+                {pendingCount} unique links will be sent to employees — 24 hours before payday
+              </p>
+            </div>
+            <button className="bg-[#3a6e57] hover:bg-[#2d5745] text-white text-[12px] font-medium h-[28px] px-[10px] py-3 rounded-lg flex items-center transition-colors shrink-0 whitespace-nowrap">
               Preview Invites
             </button>
           </div>
 
-          {/* Main Grid */}
-          <div className="grid grid-cols-[1fr_280px] gap-5">
+          {/* Main Content Grid */}
+          <div className="flex gap-6 min-h-0">
             {/* Employee Table */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="text-gray-800 font-semibold text-sm">Employees — May 2026</h3>
+            <div className="flex-1 bg-white rounded-xl overflow-hidden min-w-0 flex flex-col">
+              {/* Table header */}
+              <div className="px-4 py-2 flex items-center justify-between gap-2 shrink-0">
+                <h3 className="text-[#4e4e4e] font-bold text-[14px] whitespace-nowrap">Employees — May 2026</h3>
                 <div className="flex items-center gap-2">
-                  {[
-                    { label: "All (433)", active: true },
-                    { label: "Frozen (214)" },
-                    { label: "Review (56)" },
-                    { label: "Clear (90)" },
-                  ].map(({ label, active }) => (
-                    <button
-                      key={label}
-                      className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                        active
-                          ? "bg-[#0D2B1F] text-white"
-                          : "text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 ml-2">
-                    <RiSearchLine className="text-gray-400 text-sm" />
-                    <input placeholder="Search" className="text-xs bg-transparent outline-none text-gray-600 w-28 placeholder-gray-400" />
+                  {/* Filter tabs */}
+                  <div className="bg-[#f8f8f8] flex gap-0.5 items-center p-1 rounded-full w-[355px]">
+                    {[
+                      { label: `All (${stats.totalEmployees})`,     active: true },
+                      { label: `Frozen (${stats.frozen})`, active: false },
+                      { label: `Review (${stats.review})`,   active: false },
+                      { label: `Clear (${stats.cleared})`,    active: false },
+                    ].map(({ label, active }) => (
+                      <button
+                        key={label}
+                        className={`flex-1 text-[12px] px-3.5 py-2.5 rounded-full transition-colors ${
+                          active
+                            ? "bg-white text-[#1f1f1f] font-medium shadow-[0px_1px_5px_rgba(0,0,0,0.1)]"
+                            : "text-[#4d4d4d] font-normal"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Search */}
+                  <div className="flex items-center border border-[#ededed] rounded-full px-4 py-3 w-[160px] gap-2 h-[46px]">
+                    <Search className="w-4 h-4 text-[#787878] shrink-0" strokeWidth={2} />
+                    <input
+                      placeholder="Search"
+                      className="text-[14px] bg-transparent outline-none text-[#787878] w-full placeholder-[#787878] font-normal"
+                    />
                   </div>
                 </div>
               </div>
 
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-50">
-                    <th className="w-10 px-5 py-3"><input type="checkbox" className="rounded border-gray-300" /></th>
-                    <th className="text-left text-[11px] text-gray-400 font-semibold uppercase tracking-wide py-3 pr-4">Employee</th>
-                    <th className="text-left text-[11px] text-gray-400 font-semibold uppercase tracking-wide py-3 pr-4">DNA Score</th>
-                    <th className="text-left text-[11px] text-gray-400 font-semibold uppercase tracking-wide py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employees.map((emp) => (
-                    <tr key={emp.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                      <td className="px-5 py-3"><input type="checkbox" className="rounded border-gray-300" /></td>
-                      <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-8 h-8 rounded-full ${emp.color} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
-                            {emp.initials}
-                          </div>
-                          <div>
-                            <p className="text-gray-800 text-sm font-medium leading-tight">{emp.name}</p>
-                            <p className="text-gray-400 text-[11px]">{emp.id} · {emp.role}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4">
-                        <span className={`text-sm font-bold px-2 py-0.5 rounded ${dnaColor(emp.dna)}`}>{emp.dna}</span>
-                      </td>
-                      <td className="py-3">{statusBadge(emp.status)}</td>
+              {/* Table */}
+              <div className="border border-[#ededed] flex-1 flex flex-col overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#f8f8f8]">
+                      <th className="w-12 px-6 py-3 text-left">
+                        <div className="w-4 h-4 border border-[#dfe1e6] rounded bg-white" />
+                      </th>
+                      <th className="text-left text-[12px] text-[#1f1f1f] font-medium py-3 pr-4">Employee</th>
+                      <th className="text-left text-[12px] text-[#1f1f1f] font-medium py-3 pr-4 w-[115px]">DNA Score</th>
+                      <th className="text-left text-[12px] text-[#1f1f1f] font-medium py-3 w-[127px]">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {employees.slice(0, 9).map((emp) => (
+                      <tr
+                        key={emp._id}
+                        className="border-b border-[#ededed] hover:bg-[#f8f8f8] cursor-pointer transition-colors"
+                        onClick={() => router.push(`/hr-admin/employees/${emp._id}`)}
+                      >
+                        <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
+                          <div className="w-4 h-4 border border-[#dfe1e6] rounded bg-white" />
+                        </td>
+                        <td className="py-4 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-[42px] h-[42px] rounded-full bg-[#fed7aa] flex items-center justify-center shrink-0">
+                              <span className="text-[#c24a25] text-[13px] font-bold">{getInitials(emp.name)}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[#4d4d4d] text-[12px] font-medium leading-tight overflow-hidden text-ellipsis whitespace-nowrap">{emp.name}</p>
+                              <p className="text-[#787878] text-[10px] font-normal leading-tight overflow-hidden text-ellipsis whitespace-nowrap">{emp._id.slice(-8).toUpperCase()} · {emp.roleTitle}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 pr-4">
+                          <DnaBadge score={emp.dnaScore ?? 0} />
+                        </td>
+                        <td className="py-4">
+                          <StatusBadge status={emp.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
 
-              <div className="px-5 py-3 flex items-center justify-between border-t border-gray-100">
-                <p className="text-gray-400 text-xs">Showing 7 of 58 employees · Sorted by DNA Score ascending</p>
-                <div className="flex gap-2">
-                  <button className="text-xs text-gray-500 hover:text-gray-800 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Previous</button>
-                  <button className="text-xs text-gray-500 hover:text-gray-800 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Next</button>
+                {/* Pagination */}
+                <div className="px-6 py-4 flex items-center justify-between border-t border-[#ededed] shrink-0 mt-auto">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[#1f1f1f] text-[14px] font-medium">Page</p>
+                    <div className="flex items-center gap-1">
+                      <div className="border border-[#ededed] rounded-lg px-2 py-2 flex items-center gap-2">
+                        <p className="text-[#1f1f1f] text-[14px] font-medium">1</p>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="#1f1f1f" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                      <p className="text-[#1f1f1f] text-[14px] font-medium">of 10</p>
+                    </div>
+                  </div>
+                  <p className="text-[#787878] text-[12px] font-normal overflow-hidden text-ellipsis whitespace-nowrap">
+                    Showing {Math.min(9, employees.length)} of {stats.totalEmployees} employees · Sorted by DNA Score ascending
+                  </p>
+                  <div className="flex gap-3 shrink-0">
+                    <button className="text-[14px] text-[#1f1f1f] font-medium px-3.5 py-2 border border-[#ededed] rounded-lg shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white">
+                      Previous
+                    </button>
+                    <button className="text-[14px] text-[#1f1f1f] font-medium px-3.5 py-2 border border-[#ededed] rounded-lg shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white">
+                      Next
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Payroll Summary Sidebar */}
-            <div className="space-y-4">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h3 className="text-gray-800 font-semibold text-sm mb-4">Payroll Summary</h3>
-                <div className="mb-4">
-                  <p className="text-gray-400 text-[11px] uppercase tracking-wide mb-0.5">Total disbursement</p>
-                  <p className="text-gray-900 text-2xl font-bold">₦16,850,000</p>
-                  <p className="text-gray-400 text-xs">across 55 cleared employees</p>
+            <div className="flex flex-col gap-6 shrink-0 w-[325px]">
+              {/* Payroll Summary Card */}
+              <div className="bg-white rounded-xl overflow-hidden">
+                <div className="h-[56px] px-4 py-2 border-b border-[#e0e3dc] flex items-center justify-between">
+                  <h3 className="text-[#4e4e4e] font-bold text-[14px]">Payroll Summary</h3>
                 </div>
-                <div className="bg-rose-50 border border-rose-100 rounded-lg px-3 py-2.5 mb-4">
-                  <p className="text-rose-600 text-xs font-medium">₦770,000 frozen — 3 employees pending resolution</p>
-                </div>
-                <div className="space-y-3">
+                <div className="overflow-hidden">
+                  {/* Disbursement section */}
+                  <div className="border-b border-[#f0f0f0] flex flex-col gap-3 p-3">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-[#828282] text-[14px] font-medium">Total disbursement</p>
+                      <p className="text-[#1e1e1e] text-[22px] font-semibold leading-[1.24]">₦16,850,000</p>
+                      <p className="text-[#4e4e4e] text-[12px] font-normal">across 55 cleared employees</p>
+                    </div>
+                    <div className="bg-[#fee2e2] rounded-xl p-3 flex items-start justify-center">
+                      <p className="flex-1 text-[#b91c1c] text-[12px] font-normal">
+                        ₦770,000 frozen — 3 employees pending resolution
+                      </p>
+                    </div>
+                  </div>
+                  {/* Status items */}
                   {[
-                    { count: 47, label: "Cleared for payment", sub: "Release automatically on 25 May", color: "text-emerald-600", bg: "bg-emerald-100" },
-                    { count: 8, label: "Awaiting manual review", sub: "You must approve before payday", color: "text-amber-600", bg: "bg-amber-100" },
-                    { count: 3, label: "Auto-frozen by AI", sub: "Auditor notified · Under investigation", color: "text-rose-500", bg: "bg-rose-100" },
-                  ].map(({ count, label, sub, color, bg }) => (
-                    <div key={label} className="flex items-start gap-3">
-                      <div className={`${bg} ${color} w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0`}>
-                        {count}
-                      </div>
-                      <div>
-                        <p className="text-gray-700 text-xs font-semibold">{label}</p>
-                        <p className="text-gray-400 text-[10px]">{sub}</p>
+                    { count: String(stats.cleared), label: "Cleared for payment",  sub: "Release automatically on 25 May",       color: "text-[#158079]" },
+                    { count: String(stats.review),  label: "Awaiting manual review", sub: "You must approve before payday",        color: "text-[#b45309]" },
+                    { count: String(stats.frozen),  label: "Auto-frozen by AI",    sub: "Auditor notified · Under investigation", color: "text-[#b91c1c]" },
+                  ].map(({ count, label, sub, color }) => (
+                    <div key={label} className="flex gap-2 items-center justify-center p-3">
+                      <p className={`${color} text-[22px] font-semibold leading-[1.24] w-[30px] shrink-0`}>{count}</p>
+                      <div className="flex flex-1 flex-col gap-1 min-w-0">
+                        <p className="text-[#1e1e1e] text-[14px] font-medium leading-tight">{label}</p>
+                        <p className="text-[#828282] text-[12px] font-normal leading-tight">{sub}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-2.5">
-                <button className="w-full bg-[#0D2B1F] hover:bg-emerald-900 text-white text-sm font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
-                  Upload New Roster <RiAddLine />
+              {/* Action Buttons */}
+              <div className="bg-white rounded-xl p-3 flex flex-col gap-2">
+                <button className="w-full bg-[#3a6e57] hover:bg-[#2d5745] text-white text-[14px] font-medium h-[50px] rounded-xl flex items-center justify-center gap-1.5 transition-colors">
+                  Upload New Roster
+                  <Plus className="w-5 h-5" strokeWidth={2} />
                 </button>
-                <button className="w-full bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-2 transition-colors">
-                  Edit Payroll Schedule <RiEditLine />
+                <button className="w-full bg-white hover:bg-gray-50 text-[#4e4e4e] text-[14px] font-medium h-[50px] rounded-xl border border-[#e0e3dc] flex items-center justify-center gap-1.5 transition-colors">
+                  Edit Payroll Schedule
+                  <Pencil className="w-5 h-5" strokeWidth={2} />
                 </button>
-                <button className="w-full bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-2 transition-colors">
-                  Resend SMS Invites <RiMessage2Line />
+                <button className="w-full bg-white hover:bg-gray-50 text-[#4e4e4e] text-[14px] font-medium h-[50px] rounded-xl border border-[#e0e3dc] flex items-center justify-center gap-1.5 transition-colors">
+                  Resend email Invites
+                  <Mail className="w-5 h-5" strokeWidth={2} />
                 </button>
               </div>
             </div>
           </div>
+
         </main>
       </div>
     </div>

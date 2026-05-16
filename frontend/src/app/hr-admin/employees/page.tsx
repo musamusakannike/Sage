@@ -2,6 +2,7 @@
 import Sidebar from "@/components/hr-admin/Sidebar";
 import Topbar from "@/components/hr-admin/Topbar";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { RiSearchLine, RiDownloadLine, RiSnowflakeLine, RiEyeLine } from "react-icons/ri";
 
 const employees = [
@@ -29,6 +30,7 @@ const dnaColor = (score: number) => {
 };
 
 export default function EmployeesPage() {
+  const router = useRouter();
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
@@ -84,8 +86,14 @@ export default function EmployeesPage() {
               </thead>
               <tbody>
                 {employees.map((emp) => (
-                  <tr key={emp.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
-                    <td className="px-5 py-3.5"><input type="checkbox" className="rounded border-gray-300" /></td>
+                  <tr
+                    key={emp.id}
+                    className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors cursor-pointer"
+                    onClick={() => router.push("/hr-admin/employees/detail")}
+                  >
+                    <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" className="rounded border-gray-300" />
+                    </td>
                     <td className="py-3.5 pr-4">
                       <div className="flex items-center gap-2.5">
                         <div className={`w-9 h-9 rounded-full ${emp.color} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
@@ -107,7 +115,7 @@ export default function EmployeesPage() {
                     <td className="py-3.5 pr-4">
                       <span className="text-emerald-600 text-xs font-semibold">{emp.sms}</span>
                     </td>
-                    <td className="py-3.5">
+                    <td className="py-3.5" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-1.5">
                         {(emp.status === "Frozen" || emp.status === "Review") && (
                           <button className={`flex items-center gap-1 text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
@@ -118,7 +126,7 @@ export default function EmployeesPage() {
                             {emp.status === "Frozen" ? <><RiSnowflakeLine className="text-xs" /> Freeze</> : "Hold"}
                           </button>
                         )}
-                        <Link href="/employees/detail">
+                        <Link href="/hr-admin/employees/detail">
                           <button className="flex items-center gap-1 text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-[#0D2B1F] text-white hover:bg-emerald-900 transition-colors">
                             <RiEyeLine className="text-xs" /> View
                           </button>

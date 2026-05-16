@@ -1,6 +1,7 @@
 export declare enum UserRole {
     HR_ADMIN = "hr_admin",
-    AUDITOR = "auditor"
+    AUDITOR = "auditor",
+    EMPLOYEE = "employee"
 }
 export declare enum EmployeeStatus {
     CLEAR = "CLEAR",

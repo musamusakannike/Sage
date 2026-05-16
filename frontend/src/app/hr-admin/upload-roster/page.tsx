@@ -1,186 +1,541 @@
 "use client";
 import Sidebar from "@/components/hr-admin/Sidebar";
 import Topbar from "@/components/hr-admin/Topbar";
-import { useState } from "react";
-import { RiUploadCloud2Line, RiDownloadLine, RiCheckLine, RiAlertLine, RiFileLine } from "react-icons/ri";
+import { useState, useRef } from "react";
+import {
+  UploadCloud, Download, FileText, CheckCircle2, AlertTriangle,
+  Check, X, UserPlus, ChevronDown, Mail,
+} from "lucide-react";
+import { authApi } from "@/lib/api/auth.api";
+import { employeesApi } from "@/lib/api/employees.api";
+import { getApiErrorMessage } from "@/lib/utils";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Mode = "csv" | "manual";
+
+interface FormState {
+  fullName: string;
+  userRole: "employee" | "auditor";
+  role: string;
+  department: string;
+  accountNumber: string;
+  phone: string;
+  email: string;
+  salary: string;
+}
+
+const emptyForm: FormState = {
+  fullName: "", userRole: "employee", role: "", department: "", accountNumber: "", phone: "", email: "", salary: "",
+};
+
+// ─── CSV Upload Mode ──────────────────────────────────────────────────────────
 
 const previewRows = [
-  { name: "C. Obi", role: "Sr. Accountant", account: "012••••7734", phone: "0802••••61" },
-  { name: "C. Obi", role: "Budget Analyst", account: "012••••7734", phone: "0802••••61" },
-  { name: "C. Obi", role: "Finance Officer", account: "012••••7734", phone: "0802••••61" },
+  { name: "Chukwuemeka Obi",  role: "Sr. Accountant",  account: "012••••7734", phone: "0802••••61" },
+  { name: "Funke Adesanya",   role: "Budget Analyst",  account: "057••••2210", phone: "0803••••47" },
+  { name: "Ibrahim Musa",     role: "Finance Officer", account: "044••••9901", phone: "0901••••88" },
 ];
 
-export default function UploadRosterPage() {
+function CsvMode() {
   const [dragging, setDragging] = useState(false);
-  const [uploaded, setUploaded] = useState(true); // show result state
+  const [file, setFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped?.name.endsWith(".csv")) { setFile(dropped); setImportResult(null); setImportError(null); }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    if (picked) { setFile(picked); setImportResult(null); setImportError(null); }
+  };
+
+  const handleImport = async () => {
+    if (!file) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const res = await employeesApi.importCsv(file);
+      const { imported, skipped } = res.data.data;
+      setImportResult({ imported, skipped });
+    } catch (err) {
+      setImportError(getApiErrorMessage(err));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const hasFile = !!file;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="ml-[210px] flex-1 flex flex-col">
-        <Topbar title="Upload Roster" />
-        <main className="flex-1 p-6">
-          <div className="grid grid-cols-[1fr_300px] gap-5">
-            {/* Main Upload Area */}
-            <div className="space-y-5">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h2 className="text-gray-800 font-semibold mb-5">Upload Employee Roster</h2>
-
-                {/* Dropzone */}
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                  onDragLeave={() => setDragging(false)}
-                  onDrop={(e) => { e.preventDefault(); setDragging(false); }}
-                  className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center py-14 transition-colors cursor-pointer ${
-                    dragging
-                      ? "border-emerald-400 bg-emerald-50"
-                      : uploaded
-                      ? "border-emerald-300 bg-emerald-50/40"
-                      : "border-gray-200 hover:border-emerald-300 hover:bg-gray-50"
-                  }`}
+    <div className="grid grid-cols-[1fr_300px] gap-5 items-start">
+      {/* Left */}
+      <div className="flex flex-col gap-5">
+        {/* Dropzone */}
+        <div className="bg-white rounded-xl border border-[#f0f0f0] p-6">
+          <h2 className="text-[#1e1e1e] text-[15px] font-bold mb-5">Upload Employee Roster</h2>
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => !hasFile && inputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center py-14 transition-colors ${
+              dragging
+                ? "border-[#3a6e57] bg-[#f0faf5]"
+                : hasFile
+                ? "border-[#3a6e57] bg-[#f0faf5]/50"
+                : "border-[#e0e3dc] hover:border-[#3a6e57] hover:bg-[#f0faf5]/30 cursor-pointer"
+            }`}
+          >
+            <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={handleFileInput} />
+            {hasFile ? (
+              <>
+                <div className="w-12 h-12 bg-[#dcfce7] rounded-xl flex items-center justify-center mb-3">
+                  <FileText className="text-[#158079] w-6 h-6" />
+                </div>
+                <p className="text-[#1e1e1e] text-[14px] font-semibold">{file.name}</p>
+                <p className="text-[#828282] text-[12px] mt-1">58 rows · 2 skipped</p>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                  className="mt-3 text-[12px] text-[#3a6e57] hover:text-[#2d5745] font-medium underline underline-offset-2"
                 >
-                  {uploaded ? (
-                    <>
-                      <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-3">
-                        <RiFileLine className="text-emerald-600 text-2xl" />
-                      </div>
-                      <p className="text-gray-700 font-semibold text-sm">employees_may2026.csv</p>
-                      <p className="text-gray-400 text-xs mt-1">58 rows · 2 skipped</p>
-                      <button className="mt-3 text-xs text-emerald-600 hover:text-emerald-800 font-medium underline underline-offset-2">
-                        Replace file
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-3">
-                        <RiUploadCloud2Line className="text-amber-600 text-2xl" />
-                      </div>
-                      <p className="text-gray-700 font-medium text-sm">Drop your CSV file here</p>
-                      <p className="text-emerald-600 text-xs font-medium mt-0.5">Or browse your files</p>
-                      <p className="text-gray-400 text-xs mt-1">Accepted format: .csv · Max size: 10MB</p>
-                    </>
-                  )}
-                </div>
-
-                <button className="mt-4 flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 font-medium transition-colors">
-                  <RiDownloadLine className="text-sm" /> Download template CSV
+                  Replace file
                 </button>
-              </div>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 bg-[#fef3c7] rounded-xl flex items-center justify-center mb-3">
+                  <UploadCloud className="text-[#b45309] w-6 h-6" />
+                </div>
+                <p className="text-[#1e1e1e] text-[14px] font-medium">Drop your CSV file here</p>
+                <p className="text-[#3a6e57] text-[12px] font-medium mt-0.5">Or click to browse</p>
+                <p className="text-[#828282] text-[12px] mt-1">Accepted: .csv · Max 10 MB</p>
+              </>
+            )}
+          </div>
+          <button className="mt-4 flex items-center gap-1.5 text-[12px] text-[#4e4e4e] hover:text-[#1e1e1e] font-medium transition-colors">
+            <Download className="w-4 h-4" /> Download template CSV
+          </button>
+        </div>
 
-              {/* Column Mapping */}
-              {uploaded && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                  <h3 className="text-gray-800 font-semibold mb-4">Column Mapping — employees_may2026.csv</h3>
-                  <div className="space-y-3">
-                    {[
-                      { field: "Employee Name", mapped: 'Column A: "Full Name"' },
-                      { field: "Role/Job Title", mapped: 'Column B: "Position"' },
-                      { field: "Account Number", mapped: 'Column C: "Bank Account"' },
-                      { field: "Phone Number", mapped: 'Column D: "Phone"' },
-                    ].map(({ field, mapped }) => (
-                      <div key={field} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-                        <span className="text-gray-500 text-sm">{field}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-700 text-sm font-medium">{mapped}</span>
-                          <RiCheckLine className="text-emerald-500 text-base flex-shrink-0" />
-                        </div>
-                      </div>
-                    ))}
+        {/* Column mapping */}
+        {hasFile && (
+          <div className="bg-white rounded-xl border border-[#f0f0f0] p-6">
+            <h3 className="text-[#1e1e1e] text-[14px] font-bold mb-4">Column Mapping — {file.name}</h3>
+            <div className="flex flex-col">
+              {[
+                { field: "Employee Name",  mapped: 'Column A: "Full Name"' },
+                { field: "Role / Job Title", mapped: 'Column B: "Position"' },
+                { field: "Account Number", mapped: 'Column C: "Bank Account"' },
+                { field: "Phone Number",   mapped: 'Column D: "Phone"' },
+              ].map(({ field, mapped }) => (
+                <div key={field} className="flex items-center justify-between py-2.5 border-b border-[#f0f0f0] last:border-0">
+                  <span className="text-[#828282] text-[14px]">{field}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#1e1e1e] text-[14px] font-medium">{mapped}</span>
+                    <Check className="w-4 h-4 text-[#158079] shrink-0" strokeWidth={2.5} />
                   </div>
                 </div>
-              )}
-
-              {/* Validation */}
-              {uploaded && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                  <h3 className="text-gray-800 font-semibold mb-4">Validation Results</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-                      <RiCheckLine className="text-emerald-600 text-base flex-shrink-0" />
-                      <p className="text-emerald-700 text-sm font-semibold">56 rows validated successfully — ready to import</p>
-                    </div>
-                    <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                      <RiAlertLine className="text-amber-600 text-base flex-shrink-0" />
-                      <p className="text-amber-700 text-sm font-semibold">2 rows have missing data and will be skipped</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* File Preview */}
-              {uploaded && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-100">
-                    <h3 className="text-gray-800 font-semibold">File Preview — First 3 Rows</h3>
-                  </div>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50/60 border-b border-gray-100">
-                        {["NAME", "ROLE", "ACCOUNT", "PHONE"].map((h) => (
-                          <th key={h} className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-6 py-3">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewRows.map((row, i) => (
-                        <tr key={i} className="border-b border-gray-50 last:border-0">
-                          <td className="px-6 py-3 text-gray-700 text-sm font-medium">{row.name}</td>
-                          <td className="px-6 py-3 text-gray-600 text-sm">{row.role}</td>
-                          <td className="px-6 py-3 text-gray-500 text-sm font-mono">{row.account}</td>
-                          <td className="px-6 py-3 text-gray-500 text-sm font-mono">{row.phone}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              ))}
             </div>
+          </div>
+        )}
 
-            {/* Right Sidebar */}
-            <div className="space-y-4">
-              {/* Import Summary */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h3 className="text-gray-800 font-semibold mb-4">Import Summary</h3>
-                <div className="text-center py-4 border-b border-gray-100 mb-4">
-                  <p className="text-5xl font-black text-[#0D2B1F]">56</p>
-                  <p className="text-gray-400 text-xs mt-1">employees ready to import</p>
-                </div>
-                <dl className="space-y-2.5">
-                  {[
-                    { label: "File name", value: "employees_may2026.csv" },
-                    { label: "Total rows", value: "58" },
-                    { label: "Valid rows", value: "56", highlight: "text-emerald-600" },
-                    { label: "Skipped rows", value: "2 – missing data", highlight: "text-amber-600" },
-                  ].map(({ label, value, highlight }) => (
-                    <div key={label} className="flex justify-between items-center py-1.5 border-b border-gray-50 last:border-0">
-                      <dt className="text-gray-400 text-xs">{label}</dt>
-                      <dd className={`text-xs font-semibold ${highlight || "text-gray-700"}`}>{value}</dd>
-                    </div>
-                  ))}
-                </dl>
+        {/* Validation */}
+        {hasFile && (
+          <div className="bg-white rounded-xl border border-[#f0f0f0] p-6">
+            <h3 className="text-[#1e1e1e] text-[14px] font-bold mb-4">Validation Results</h3>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3 bg-[#dcfce7] border border-[#bbf7d0] rounded-xl px-4 py-3">
+                <CheckCircle2 className="w-4 h-4 text-[#158079] shrink-0" />
+                <p className="text-[#158079] text-[14px] font-medium">56 rows validated — ready to import</p>
               </div>
-
-              {/* Action Buttons */}
-              <button className="w-full bg-[#0D2B1F] hover:bg-emerald-900 text-white text-sm font-semibold py-3.5 rounded-xl transition-colors shadow-sm">
-                Import 56 Employees
-              </button>
-              <button className="w-full bg-white hover:bg-gray-50 text-gray-600 text-sm font-semibold py-3.5 rounded-xl border border-gray-200 transition-colors">
-                Cancel
-              </button>
-
-              {/* CSV Format Guide */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h4 className="text-gray-800 font-semibold text-sm mb-3">CSV Format Guide</h4>
-                <p className="text-gray-400 text-xs mb-2">Required columns in order:</p>
-                <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                  <p className="text-gray-600 text-xs font-mono font-medium">Full Name, Position, Bank Account, Phone</p>
-                </div>
-                <p className="text-gray-400 text-[11px] leading-relaxed">
-                  Account numbers and phone numbers are stored encrypted. Only the last 4 digits are displayed in the interface.
-                </p>
+              <div className="flex items-center gap-3 bg-[#fef3c7] border border-[#fde68a] rounded-xl px-4 py-3">
+                <AlertTriangle className="w-4 h-4 text-[#b45309] shrink-0" />
+                <p className="text-[#b45309] text-[14px] font-medium">2 rows have missing data and will be skipped</p>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Preview */}
+        {hasFile && (
+          <div className="bg-white rounded-xl border border-[#f0f0f0] overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#e0e3dc]">
+              <h3 className="text-[#1e1e1e] text-[14px] font-bold">File Preview — First 3 Rows</h3>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr className="bg-[#f8f8f8] border-b border-[#f0f0f0]">
+                  {["NAME", "ROLE", "ACCOUNT", "PHONE"].map(h => (
+                    <th key={h} className="text-left text-[11px] font-semibold text-[#828282] uppercase tracking-widest px-6 py-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {previewRows.map((row, i) => (
+                  <tr key={i} className="border-b border-[#f0f0f0] last:border-0">
+                    <td className="px-6 py-3 text-[#1e1e1e] text-[14px] font-medium">{row.name}</td>
+                    <td className="px-6 py-3 text-[#4e4e4e] text-[14px]">{row.role}</td>
+                    <td className="px-6 py-3 text-[#828282] text-[14px] font-mono">{row.account}</td>
+                    <td className="px-6 py-3 text-[#828282] text-[14px] font-mono">{row.phone}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Right sidebar */}
+      <div className="flex flex-col gap-4">
+        <div className="bg-white rounded-xl border border-[#f0f0f0] p-5">
+          <h3 className="text-[#1e1e1e] text-[14px] font-bold mb-4">Import Summary</h3>
+          <div className="text-center py-4 border-b border-[#f0f0f0] mb-4">
+            <p className="text-[50px] font-extrabold text-[#1e1e1e] leading-none">{hasFile ? "56" : "—"}</p>
+            <p className="text-[#828282] text-[12px] mt-1">employees ready to import</p>
+          </div>
+          <div className="flex flex-col">
+            {[
+              { label: "File name",    value: hasFile ? file.name : "No file selected" },
+              { label: "Total rows",   value: hasFile ? "58" : "—" },
+              { label: "Valid rows",   value: hasFile ? "56" : "—", color: "text-[#158079]" },
+              { label: "Skipped rows", value: hasFile ? "2 – missing data" : "—", color: "text-[#b45309]" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="flex justify-between items-center py-2 border-b border-[#f0f0f0] last:border-0">
+                <span className="text-[#828282] text-[12px]">{label}</span>
+                <span className={`text-[12px] font-semibold truncate max-w-[130px] text-right ${color ?? "text-[#1e1e1e]"}`}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {importError && (
+          <div className="flex items-start gap-2 bg-[#fee2e2] rounded-xl p-3">
+            <X className="w-4 h-4 text-[#b91c1c] shrink-0 mt-0.5" />
+            <p className="text-[#b91c1c] text-[12px]">{importError}</p>
+          </div>
+        )}
+
+        {importResult && (
+          <div className="flex flex-col gap-1.5 bg-[#dcfce7] rounded-xl p-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#158079] shrink-0" />
+              <p className="text-[#158079] text-[13px] font-semibold">{importResult.imported} employees imported</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-[#158079] shrink-0" />
+              <p className="text-[#158079] text-[12px]">Welcome emails sent — they can now sign in via email code.</p>
+            </div>
+          </div>
+        )}
+
+        <button
+          disabled={!hasFile || importing || !!importResult}
+          onClick={handleImport}
+          className={`w-full text-white text-[14px] font-semibold py-3.5 rounded-xl transition-colors ${
+            hasFile && !importing && !importResult ? "bg-[#3a6e57] hover:bg-[#2d5745]" : "bg-[#e0e3dc] text-[#828282] cursor-not-allowed"
+          }`}
+        >
+          {importing ? "Importing…" : importResult ? "Imported ✓" : `Import Employees`}
+        </button>
+        <button className="w-full bg-white hover:bg-gray-50 text-[#4e4e4e] text-[14px] font-semibold py-3.5 rounded-xl border border-[#e0e3dc] transition-colors">
+          Cancel
+        </button>
+
+        <div className="bg-white rounded-xl border border-[#f0f0f0] p-5">
+          <h4 className="text-[#1e1e1e] text-[13px] font-bold mb-2">CSV Format Guide</h4>
+          <p className="text-[#828282] text-[12px] mb-2">Required columns in order:</p>
+          <div className="bg-[#f8f8f8] rounded-lg px-3 py-2 mb-3">
+            <p className="text-[#4e4e4e] text-[12px] font-mono">Full Name, Position, Bank Account, Phone</p>
+          </div>
+          <p className="text-[#828282] text-[11px] leading-relaxed">
+            Account numbers and phone numbers are stored encrypted. Only the last 4 digits are shown in the interface.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Manual Form Mode ─────────────────────────────────────────────────────────
+
+const departments = ["Finance", "Accounts", "Budget", "Admin", "Procurement", "Audit", "IT"];
+
+function Field({
+  label, fieldKey, type = "text", placeholder, form, errors, onChange,
+}: {
+  label: string;
+  fieldKey: keyof FormState;
+  type?: string;
+  placeholder?: string;
+  form: FormState;
+  errors: Partial<FormState>;
+  onChange: (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[#4e4e4e] text-[13px] font-medium">{label}</label>
+      <input
+        type={type}
+        value={form[fieldKey] as string}
+        onChange={onChange(fieldKey)}
+        placeholder={placeholder}
+        className={`h-[44px] border rounded-xl px-3 text-[14px] text-[#1e1e1e] bg-white outline-none transition-colors ${
+          errors[fieldKey] ? "border-[#b91c1c]" : "border-[#e0e3dc] focus:border-[#3a6e57]"
+        }`}
+      />
+      {errors[fieldKey] && <p className="text-[#b91c1c] text-[11px]">{errors[fieldKey]}</p>}
+    </div>
+  );
+}
+
+function ManualMode() {
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<FormState>>({});
+
+  const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const validate = () => {
+    const e: Partial<FormState> = {};
+    if (!form.fullName.trim())      e.fullName = "Full name is required";
+    if (!form.email.trim())         e.email = "Email is required";
+    if (!form.role.trim())          e.role = "Job title is required";
+    if (!form.department)           e.department = "Department is required";
+    if (!form.accountNumber.trim()) e.accountNumber = "Account number is required";
+    if (!form.phone.trim())         e.phone = "Phone number is required";
+    if (!form.salary.trim())        e.salary = "Gross salary is required";
+    return e;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setErrors({});
+    setApiError(null);
+    setLoading(true);
+    try {
+      await authApi.invite({ name: form.fullName, email: form.email, role: form.userRole });
+      setSubmitted(true);
+    } catch (err) {
+      setApiError(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReset = () => { setForm(emptyForm); setErrors({}); setSubmitted(false); setApiError(null); };
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col items-center justify-center bg-white rounded-xl border border-[#f0f0f0] p-16 gap-4">
+        <div className="w-16 h-16 rounded-full bg-[#dcfce7] flex items-center justify-center">
+          <CheckCircle2 className="w-8 h-8 text-[#158079]" />
+        </div>
+        <h3 className="text-[#1e1e1e] text-[18px] font-bold">{form.fullName} added successfully</h3>
+        <div className="flex flex-col gap-2 items-center max-w-sm">
+          <p className="text-[#828282] text-[14px] text-center">
+            A welcome email has been sent to <strong className="text-[#1e1e1e]">{form.email}</strong>.
+          </p>
+          <div className="flex items-center gap-2 bg-[#f8f8f8] rounded-xl px-4 py-2.5 w-full">
+            <Mail className="w-4 h-4 text-[#3a6e57] shrink-0" />
+            <p className="text-[#4e4e4e] text-[12px]">
+              They can sign in at any time using their email and a confirmation code — no password needed.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleReset}
+          className="h-[42px] px-5 rounded-xl bg-[#3a6e57] hover:bg-[#2d5745] text-white text-[14px] font-medium transition-colors mt-2"
+        >
+          Add another
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate className="grid grid-cols-[1fr_300px] gap-5 items-start">
+      {/* Left — form */}
+      <div className="bg-white rounded-xl border border-[#f0f0f0] p-6 flex flex-col gap-5">
+        <div>
+          <h2 className="text-[#1e1e1e] text-[15px] font-bold">Employee Details</h2>
+          <p className="text-[#828282] text-[13px] mt-0.5">Fill in the fields below to add a user to the current payroll cycle. A welcome email will be sent automatically.</p>
+        </div>
+
+        {/* Role selector */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[#4e4e4e] text-[13px] font-medium">System role</label>
+          <div className="flex gap-2">
+            {([["employee", "Employee", "Standard payroll employee — signs in via email code"] , ["auditor", "Auditor", "Reviews flagged cases — signs in via email code"]] as const).map(([val, label, desc]) => (
+              <button
+                key={val} type="button"
+                onClick={() => setForm(f => ({ ...f, userRole: val }))}
+                className={`flex-1 text-left p-3 rounded-xl border transition-colors ${
+                  form.userRole === val
+                    ? "border-[#3a6e57] bg-[#f0faf5]"
+                    : "border-[#e0e3dc] bg-white hover:bg-[#f8f8f8]"
+                }`}
+              >
+                <p className={`text-[13px] font-semibold ${form.userRole === val ? "text-[#3a6e57]" : "text-[#1e1e1e]"}`}>{label}</p>
+                <p className="text-[#828282] text-[11px] mt-0.5 leading-relaxed">{desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Full name"     fieldKey="fullName" placeholder="e.g. Chukwuemeka Obi" form={form} errors={errors} onChange={set} />
+          <Field label="Email address" fieldKey="email"    type="email" placeholder="name@gov.ng" form={form} errors={errors} onChange={set} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Job title" fieldKey="role" placeholder="e.g. Senior Accountant" form={form} errors={errors} onChange={set} />
+          {/* Department select */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[#4e4e4e] text-[13px] font-medium">Department</label>
+            <div className="relative">
+              <select
+                value={form.department}
+                onChange={set("department")}
+                className={`w-full h-[44px] border rounded-xl px-3 pr-8 text-[14px] text-[#1e1e1e] bg-white outline-none appearance-none transition-colors ${
+                  errors.department ? "border-[#b91c1c]" : "border-[#e0e3dc] focus:border-[#3a6e57]"
+                }`}
+              >
+                <option value="">Select department</option>
+                {departments.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#828282] pointer-events-none" />
+            </div>
+            {errors.department && <p className="text-[#b91c1c] text-[11px]">{errors.department}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Bank account number" fieldKey="accountNumber" placeholder="10-digit NUBAN" form={form} errors={errors} onChange={set} />
+          <Field label="Phone number"         fieldKey="phone"          placeholder="080X XXX XXXX"   form={form} errors={errors} onChange={set} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Gross monthly salary (₦)" fieldKey="salary" type="number" placeholder="e.g. 350000" form={form} errors={errors} onChange={set} />
+        </div>
+
+        <div className="bg-[#f8f8f8] rounded-xl p-3">
+          <p className="text-[#828282] text-[12px] leading-relaxed">
+            Account numbers and phone numbers are encrypted at rest. Only the last 4 digits are shown in the interface. The employee will receive a verification SMS link before payday.
+          </p>
+        </div>
+      </div>
+
+      {/* Right — summary + submit */}
+      <div className="flex flex-col gap-4">
+        <div className="bg-white rounded-xl border border-[#f0f0f0] p-5">
+          <h3 className="text-[#1e1e1e] text-[14px] font-bold mb-3">Before you submit</h3>
+          <div className="flex flex-col gap-2">
+            {[
+              "Full name and job title are correct",
+              "Account number is a valid 10-digit NUBAN",
+              "Phone number can receive SMS",
+              "Salary figure reflects current gross pay",
+            ].map(item => (
+              <div key={item} className="flex items-start gap-2">
+                <div className="w-4 h-4 rounded border border-[#3a6e57] bg-[#dcfce7] flex items-center justify-center shrink-0 mt-0.5">
+                  <Check className="w-2.5 h-2.5 text-[#158079]" strokeWidth={3} />
+                </div>
+                <span className="text-[#4e4e4e] text-[12px] leading-relaxed">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className={`w-full text-white text-[14px] font-semibold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 ${
+            loading ? "bg-[#e0e3dc] text-[#828282] cursor-not-allowed" : "bg-[#3a6e57] hover:bg-[#2d5745]"
+          }`}
+        >
+          <UserPlus className="w-4 h-4" />
+          {loading ? "Adding…" : "Add & Send Invite Email"}
+        </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="w-full bg-white hover:bg-gray-50 text-[#4e4e4e] text-[14px] font-semibold py-3.5 rounded-xl border border-[#e0e3dc] transition-colors"
+        >
+          Clear form
+        </button>
+
+        {Object.keys(errors).length > 0 && (
+          <div className="flex items-start gap-2 bg-[#fee2e2] rounded-xl p-3">
+            <X className="w-4 h-4 text-[#b91c1c] shrink-0 mt-0.5" />
+            <p className="text-[#b91c1c] text-[12px]">Please fix the highlighted fields before submitting.</p>
+          </div>
+        )}
+
+        {apiError && (
+          <div className="flex items-start gap-2 bg-[#fee2e2] rounded-xl p-3">
+            <X className="w-4 h-4 text-[#b91c1c] shrink-0 mt-0.5" />
+            <p className="text-[#b91c1c] text-[12px]">{apiError}</p>
+          </div>
+        )}
+      </div>
+    </form>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function UploadRosterPage() {
+  const [mode, setMode] = useState<Mode>("csv");
+
+  return (
+    <div className="flex min-h-screen bg-[#f0f2f6]">
+      <Sidebar />
+      <div className="ml-[250px] flex-1 flex flex-col min-w-0">
+        <Topbar title="Upload Roster" />
+        <main className="flex-1 p-6 flex flex-col gap-5">
+
+          {/* Mode tabs */}
+          <div className="bg-white rounded-xl border border-[#f0f0f0] p-1 flex gap-1 self-start">
+            <button
+              onClick={() => setMode("csv")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                mode === "csv"
+                  ? "bg-[#3a6e57] text-white"
+                  : "text-[#4e4e4e] hover:bg-[#f0f2f6]"
+              }`}
+            >
+              <UploadCloud className="w-4 h-4" />
+              Upload CSV
+            </button>
+            <button
+              onClick={() => setMode("manual")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                mode === "manual"
+                  ? "bg-[#3a6e57] text-white"
+                  : "text-[#4e4e4e] hover:bg-[#f0f2f6]"
+              }`}
+            >
+              <UserPlus className="w-4 h-4" />
+              Add Employee Manually
+            </button>
+          </div>
+
+          {mode === "csv" ? <CsvMode /> : <ManualMode />}
+
         </main>
       </div>
     </div>

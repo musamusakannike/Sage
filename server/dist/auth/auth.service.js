@@ -47,16 +47,24 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = __importStar(require("bcryptjs"));
 const users_service_1 = require("../users/users.service");
+const notifications_service_1 = require("../notifications/notifications.service");
+const enums_1 = require("../common/enums");
+const OTP_TTL_MINUTES = 10;
+function generateOtp() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
 let AuthService = class AuthService {
     usersService;
     jwtService;
-    constructor(usersService, jwtService) {
+    notificationsService;
+    constructor(usersService, jwtService, notificationsService) {
         this.usersService = usersService;
         this.jwtService = jwtService;
+        this.notificationsService = notificationsService;
     }
     async validateUser(email, password) {
         const user = await this.usersService.findByEmail(email);
-        if (!user)
+        if (!user || !user.passwordHash)
             return null;
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch)
@@ -74,17 +82,64 @@ let AuthService = class AuthService {
     }
     async seedAdmin(dto) {
         const existing = await this.usersService.findByEmail(dto.email);
-        if (existing) {
+        if (existing)
             throw new common_1.UnauthorizedException('Email already registered.');
-        }
         await this.usersService.create(dto);
         return { message: 'Admin created.' };
+    }
+    async invite(dto, inviterUserId) {
+        const inviter = await this.usersService.findById(inviterUserId);
+        if (!inviter)
+            throw new common_1.NotFoundException('Inviting user not found.');
+        const existing = await this.usersService.findByEmail(dto.email);
+        if (existing)
+            throw new common_1.BadRequestException('An account with this email already exists.');
+        const role = dto.role === 'auditor' ? enums_1.UserRole.AUDITOR : enums_1.UserRole.EMPLOYEE;
+        await this.usersService.createInvited(dto.name, dto.email, role, inviter.orgName, inviter.orgId?.toString() ?? '');
+        this.notificationsService.sendWelcomeEmail(dto.email, dto.name, dto.role).catch(() => null);
+        return { message: `Invitation sent to ${dto.email}.` };
+    }
+    async requestOtp(dto) {
+        const user = await this.usersService.findByEmail(dto.email);
+        if (!user) {
+            return { message: 'If that email is registered, a code has been sent.' };
+        }
+        if (user.role === enums_1.UserRole.HR_ADMIN) {
+            throw new common_1.BadRequestException('HR admin accounts use password sign-in.');
+        }
+        const code = generateOtp();
+        const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
+        await this.usersService.setOtp(String(user._id), code, expiresAt);
+        this.notificationsService.sendOtpEmail(user.email, user.name, code).catch(() => null);
+        return { message: 'If that email is registered, a code has been sent.' };
+    }
+    async verifyOtp(dto) {
+        const user = await this.usersService.findByEmailWithOtp(dto.email);
+        if (!user || !user.otpCode || !user.otpExpiresAt) {
+            throw new common_1.UnauthorizedException('Invalid or expired code.');
+        }
+        if (new Date() > user.otpExpiresAt) {
+            await this.usersService.clearOtp(String(user._id));
+            throw new common_1.UnauthorizedException('Code has expired. Please request a new one.');
+        }
+        if (dto.code !== user.otpCode) {
+            throw new common_1.UnauthorizedException('Invalid or expired code.');
+        }
+        await this.usersService.clearOtp(String(user._id));
+        const payload = {
+            sub: String(user._id),
+            email: user.email,
+            role: user.role,
+            orgId: user.orgId?.toString() ?? '',
+        };
+        return { access_token: this.jwtService.sign(payload) };
     }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [users_service_1.UsersService,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        notifications_service_1.NotificationsService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

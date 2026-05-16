@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import { User, UserDocument } from './schemas/user.schema';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UserRole } from '../common/enums';
 
 const SALT_ROUNDS = 12;
 
@@ -23,11 +24,38 @@ export class UsersService {
     return user.save();
   }
 
+  async createInvited(
+    name: string,
+    email: string,
+    role: UserRole,
+    orgName: string,
+    orgId: string,
+  ): Promise<UserDocument> {
+    const user = new this.userModel({ name, email, role, orgName, orgId });
+    return user.save();
+  }
+
   async findByEmail(email: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ email }).select('+passwordHash').lean().exec() as Promise<UserDocument | null>;
   }
 
   async findById(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id).lean().exec() as Promise<UserDocument | null>;
+  }
+
+  async setOtp(userId: string, code: string, expiresAt: Date): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, { otpCode: code, otpExpiresAt: expiresAt });
+  }
+
+  async clearOtp(userId: string): Promise<void> {
+    await this.userModel.findByIdAndUpdate(userId, { $unset: { otpCode: '', otpExpiresAt: '' } });
+  }
+
+  async findByEmailWithOtp(email: string): Promise<UserDocument | null> {
+    return this.userModel
+      .findOne({ email })
+      .select('+otpCode +otpExpiresAt')
+      .lean()
+      .exec() as Promise<UserDocument | null>;
   }
 }

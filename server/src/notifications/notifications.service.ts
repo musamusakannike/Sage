@@ -127,6 +127,79 @@ export class NotificationsService {
     }
   }
 
+  async sendWelcomeEmail(
+    to: string,
+    name: string,
+    role: string,
+  ): Promise<void> {
+    const fromAddress = this.configService.get<string>('email.fromAddress');
+    const roleLabel = role === 'auditor' ? 'Auditor' : 'Employee';
+    const appUrl = this.configService.get<string>('app.url') ?? 'https://sage.gov.ng';
+
+    if (!this.resend) {
+      this.logger.warn(`Welcome email not sent (RESEND_API_KEY not configured) to: ${to}`);
+      return;
+    }
+
+    try {
+      await this.resend.emails.send({
+        from: fromAddress ?? 'Sage AI <noreply@sage.ai>',
+        to,
+        subject: `You've been added to Sage AI as ${roleLabel === 'Auditor' ? 'an' : 'a'} ${roleLabel}`,
+        html: `
+          <p>Hi ${name},</p>
+          <p>Your account has been created on <strong>Sage AI</strong> — the payroll integrity system.</p>
+          <p>You have been added as a <strong>${roleLabel}</strong>.</p>
+          <p>To sign in, visit the link below and enter your email address. A 6-digit confirmation code will be sent to you.</p>
+          <p>
+            <a href="${appUrl}/login" style="
+              display:inline-block;
+              padding:12px 24px;
+              background:#3a6e57;
+              color:#ffffff;
+              text-decoration:none;
+              border-radius:6px;
+              font-weight:bold;
+            ">Sign in to Sage AI</a>
+          </p>
+          <hr/>
+          <p style="color:#888;font-size:12px;">If you were not expecting this email, please ignore it.</p>
+        `,
+      });
+      this.logger.log(`Welcome email sent to ${to}`);
+    } catch (error) {
+      this.logger.error(`Welcome email failed to ${to}`, (error as Error).message);
+    }
+  }
+
+  async sendOtpEmail(to: string, name: string, code: string): Promise<void> {
+    const fromAddress = this.configService.get<string>('email.fromAddress');
+
+    if (!this.resend) {
+      this.logger.warn(`OTP email not sent (RESEND_API_KEY not configured) to: ${to} — code: ${code}`);
+      return;
+    }
+
+    try {
+      await this.resend.emails.send({
+        from: fromAddress ?? 'Sage AI <noreply@sage.ai>',
+        to,
+        subject: 'Your Sage AI sign-in code',
+        html: `
+          <p>Hi ${name},</p>
+          <p>Your sign-in confirmation code is:</p>
+          <p style="font-size:36px;font-weight:bold;letter-spacing:0.3em;color:#3a6e57;">${code}</p>
+          <p>This code expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>
+          <hr/>
+          <p style="color:#888;font-size:12px;">If you did not request this code, please ignore this email.</p>
+        `,
+      });
+      this.logger.log(`OTP email sent to ${to}`);
+    } catch (error) {
+      this.logger.error(`OTP email failed to ${to}`, (error as Error).message);
+    }
+  }
+
   async sendPushNotification(
     expoPushTokens: string[],
     title: string,

@@ -1,6 +1,7 @@
 export enum UserRole {
   HR_ADMIN = 'hr_admin',
   AUDITOR = 'auditor',
+  EMPLOYEE = 'employee',
 }
 
 export enum EmployeeStatus {

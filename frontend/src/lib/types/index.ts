@@ -15,7 +15,7 @@ export interface ApiErrorResponse {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-export type UserRole = 'hr_admin' | 'auditor';
+export type UserRole = 'hr_admin' | 'auditor' | 'employee';
 
 export interface LoginPayload {
   email: string;
@@ -28,6 +28,21 @@ export interface RegisterPayload {
   password: string;
   orgName: string;
   role: UserRole;
+}
+
+export interface InvitePayload {
+  name: string;
+  email: string;
+  role: 'auditor' | 'employee';
+}
+
+export interface RequestOtpPayload {
+  email: string;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  code: string;
 }
 
 export interface AuthUser {
