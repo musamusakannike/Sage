@@ -1,8 +1,9 @@
-import { Controller, Get, NotFoundException } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Patch } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../common/decorators/current-user.decorator';
+import { UpdatePushTokenDto } from './dto/update-push-token.dto';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -19,5 +20,16 @@ export class UsersController {
     const { passwordHash: _ph, ...safe } = user as unknown as Record<string, unknown>;
     void _ph;
     return safe;
+  }
+
+  @Patch('push-token')
+  @ApiOperation({ summary: 'Register or update the Expo push notification token for the current user' })
+  @ApiResponse({ status: 200, description: 'Push token saved' })
+  async updatePushToken(
+    @CurrentUser() payload: JwtPayload,
+    @Body() dto: UpdatePushTokenDto,
+  ) {
+    await this.usersService.updatePushToken(payload.sub, dto.token);
+    return { message: 'Push token saved.' };
   }
 }

@@ -12,4 +12,5 @@ export declare class UsersService {
     setOtp(userId: string, code: string, expiresAt: Date): Promise<void>;
     clearOtp(userId: string): Promise<void>;
     findByEmailWithOtp(email: string): Promise<UserDocument | null>;
+    updatePushToken(userId: string, expoPushToken: string): Promise<void>;
 }

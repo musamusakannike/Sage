@@ -48,6 +48,7 @@ import { Colors } from '@/constants';
 import { usersApi } from '@/src/api/users.api';
 import { useAuthStore } from '@/src/store/auth.store';
 import { useToastStore } from '@/src/store/toast.store';
+import { usePushNotifications } from '@/src/hooks/usePushNotifications';
 
 const { height } = Dimensions.get('window');
 
@@ -64,6 +65,9 @@ export default function HomeScreen() {
   const router = useRouter();
   const { logout } = useAuthStore();
   const { show } = useToastStore();
+
+  // Register Expo push token with the server on first authenticated load
+  usePushNotifications();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);

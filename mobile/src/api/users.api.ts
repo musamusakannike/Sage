@@ -12,4 +12,6 @@ export interface UserProfile {
 
 export const usersApi = {
   getMe: () => apiClient.get<ApiResponse<UserProfile>>('/users/me'),
+  registerPushToken: (token: string) =>
+    apiClient.patch<{ message: string }>('/users/push-token', { token }),
 };

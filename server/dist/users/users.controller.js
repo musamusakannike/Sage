@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
 const users_service_1 = require("./users.service");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const update_push_token_dto_1 = require("./dto/update-push-token.dto");
 let UsersController = class UsersController {
     usersService;
     constructor(usersService) {
@@ -30,6 +31,10 @@ let UsersController = class UsersController {
         void _ph;
         return safe;
     }
+    async updatePushToken(payload, dto) {
+        await this.usersService.updatePushToken(payload.sub, dto.token);
+        return { message: 'Push token saved.' };
+    }
 };
 exports.UsersController = UsersController;
 __decorate([
@@ -41,6 +46,16 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], UsersController.prototype, "getMe", null);
+__decorate([
+    (0, common_1.Patch)('push-token'),
+    (0, swagger_1.ApiOperation)({ summary: 'Register or update the Expo push notification token for the current user' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Push token saved' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, update_push_token_dto_1.UpdatePushTokenDto]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "updatePushToken", null);
 exports.UsersController = UsersController = __decorate([
     (0, swagger_1.ApiTags)('users'),
     (0, swagger_1.ApiBearerAuth)(),

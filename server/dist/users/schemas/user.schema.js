@@ -22,6 +22,7 @@ let User = class User {
     orgId;
     otpCode;
     otpExpiresAt;
+    expoPushToken;
 };
 exports.User = User;
 __decorate([
@@ -56,6 +57,10 @@ __decorate([
     (0, mongoose_1.Prop)({ type: Date, select: false }),
     __metadata("design:type", Date)
 ], User.prototype, "otpExpiresAt", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ type: String }),
+    __metadata("design:type", String)
+], User.prototype, "expoPushToken", void 0);
 exports.User = User = __decorate([
     (0, mongoose_1.Schema)({ timestamps: true, collection: 'users' })
 ], User);
