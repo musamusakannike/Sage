@@ -10,12 +10,13 @@ export declare class EmployeesService {
     private employeeModel;
     constructor(employeeModel: Model<EmployeeDocument>);
     createFromInvite(orgId: string, name: string, email: string, roleTitle: string): Promise<EmployeeDocument>;
-    findAll(orgId: string, status?: EmployeeStatus, search?: string, page?: number, limit?: number): Promise<{
+    findAll(orgId: string, status?: EmployeeStatus, search?: string, page?: number, limit?: number, allOrgs?: boolean): Promise<{
         data: EmployeeDocument[];
         total: number;
     }>;
     findById(id: string, orgId: string): Promise<EmployeeDocument>;
     updateStatus(id: string, orgId: string, status: EmployeeStatus): Promise<EmployeeDocument>;
+    updateStatusById(id: string, status: EmployeeStatus): Promise<EmployeeDocument>;
     importFromCsv(orgId: string, buffer: Buffer): Promise<ImportResult>;
     updateDnaScore(id: string, score: number): Promise<void>;
     maskAccountNumber(accountNumber: string | null): string;

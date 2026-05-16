@@ -16,6 +16,7 @@ const case_schema_1 = require("./schemas/case.schema");
 const employees_module_1 = require("../employees/employees.module");
 const verification_module_1 = require("../verification/verification.module");
 const transactions_module_1 = require("../transactions/transactions.module");
+const notifications_module_1 = require("../notifications/notifications.module");
 let CasesModule = class CasesModule {
 };
 exports.CasesModule = CasesModule;
@@ -26,6 +27,7 @@ exports.CasesModule = CasesModule = __decorate([
             employees_module_1.EmployeesModule,
             verification_module_1.VerificationModule,
             transactions_module_1.TransactionsModule,
+            notifications_module_1.NotificationsModule,
         ],
         controllers: [cases_controller_1.CasesController, leaderboard_controller_1.LeaderboardController],
         providers: [cases_service_1.CasesService],

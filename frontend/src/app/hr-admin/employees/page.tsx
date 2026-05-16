@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { employeesApi } from "@/lib/api/employees.api";
+import { extractId } from "@/lib/utils";
 import type { Employee, ServerEmployeeStatus } from "@/lib/types";
 import { Search, Download, Eye, Snowflake } from "lucide-react";
 
@@ -77,7 +78,7 @@ export default function EmployeesPage() {
         limit: PAGE_SIZE,
       });
       const { data, total } = res.data.data;
-      setEmployees(data);
+      setEmployees(data.map(e => ({ ...e, _id: extractId(e._id) })));
       setTotal(total);
     } catch {
       setEmployees([]);
@@ -187,9 +188,9 @@ export default function EmployeesPage() {
                   </tr>
                 ) : employees.map((emp) => (
                   <tr
-                    key={String(emp._id)}
+                    key={emp._id}
                     className="border-b border-[#f0f0f0] hover:bg-[#f8f8f8] transition-colors cursor-pointer"
-                    onClick={() => router.push(`/hr-admin/employees/${String(emp._id)}`)}
+                    onClick={() => router.push(`/hr-admin/employees/${emp._id}`)}
                   >
                     <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" className="rounded border-[#dfe1e6]" />
@@ -201,7 +202,7 @@ export default function EmployeesPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-[#1e1e1e] text-[13px] font-medium leading-tight truncate">{emp.name}</p>
-                          <p className="text-[#828282] text-[11px] leading-tight truncate">{String(emp._id).slice(-8).toUpperCase()} · {emp.roleTitle}</p>
+                          <p className="text-[#828282] text-[11px] leading-tight truncate">{emp._id.slice(-8).toUpperCase()} · {emp.roleTitle}</p>
                         </div>
                       </div>
                     </td>
@@ -216,7 +217,7 @@ export default function EmployeesPage() {
                       <div className="flex items-center gap-1.5">
                         {emp.status === "FROZEN" && (
                           <button
-                            onClick={() => employeesApi.freeze(String(emp._id))}
+                            onClick={() => employeesApi.freeze(emp._id)}
                             className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-[#fee2e2] text-[#b91c1c] border border-[#fecaca] hover:bg-[#fecaca] transition-colors"
                           >
                             <Snowflake className="w-3 h-3" /> Freeze
@@ -224,13 +225,13 @@ export default function EmployeesPage() {
                         )}
                         {emp.status === "REVIEW" && (
                           <button
-                            onClick={() => employeesApi.hold(String(emp._id))}
+                            onClick={() => employeesApi.hold(emp._id)}
                             className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-[#f0f0f0] text-[#4e4e4e] border border-[#e0e3dc] hover:bg-[#e0e3dc] transition-colors"
                           >
                             Hold
                           </button>
                         )}
-                        <Link href={`/hr-admin/employees/${String(emp._id)}`} onClick={e => e.stopPropagation()}>
+                        <Link href={`/hr-admin/employees/${emp._id}`} onClick={e => e.stopPropagation()}>
                           <button className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-[#1e1e1e] text-white hover:bg-[#3a6e57] transition-colors">
                             <Eye className="w-3 h-3" /> View
                           </button>

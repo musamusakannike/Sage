@@ -72,8 +72,8 @@ export interface Employee {
   orgId: string;
   name: string;
   roleTitle: string;
-  accountNumber: string;
-  phone: string;
+  accountNumber: string | null;
+  phone: string | null;
   email: string | null;
   dnaScore: number | null;
   status: ServerEmployeeStatus;

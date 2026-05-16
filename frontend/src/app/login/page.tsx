@@ -51,7 +51,7 @@ function AdminLoginForm() {
       const user = decodeJwt(token);
       if (!user) throw new Error('Invalid token received.');
       setToken(token, user);
-      router.push(user.role === 'auditor' ? '/auditor/dashboard' : '/hr-admin/dashboard');
+      router.push(user.role === 'auditor' ? '/auditor' : '/hr-admin/dashboard');
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -139,7 +139,7 @@ function OtpLoginForm() {
       const user = decodeJwt(token);
       if (!user) throw new Error('Invalid token received.');
       setToken(token, user);
-      router.push(user.role === 'auditor' ? '/auditor/dashboard' : '/hr-admin/dashboard');
+      router.push(user.role === 'auditor' ? '/auditor' : '/hr-admin/dashboard');
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -294,7 +294,7 @@ export default function LoginPage() {
 
         {/* Flow switcher */}
         <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', padding: 4, marginBottom: 28, gap: 4 }}>
-          {([['admin', 'HR Admin'], ['otp', 'Employee / Auditor']] as [Flow, string][]).map(([f, label]) => (
+          {([['admin', 'HR Admin'], ['otp', 'Auditor']] as [Flow, string][]).map(([f, label]) => (
             <button
               key={f} onClick={() => setFlow(f)}
               style={{

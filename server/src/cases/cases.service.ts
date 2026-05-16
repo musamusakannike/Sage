@@ -90,7 +90,7 @@ export class CasesService {
     orgId: string,
     cycle?: string,
   ): Promise<unknown[]> {
-    const employees = await this.employeesService.findAll(orgId);
+    const employees = await this.employeesService.findAll(orgId, undefined, undefined, 1, 500, true);
     const cases = await this.caseModel
       .find({ orgId: new Types.ObjectId(orgId), status: CaseStatus.OPEN })
       .lean()

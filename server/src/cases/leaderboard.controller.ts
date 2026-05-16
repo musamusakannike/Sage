@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -10,12 +10,13 @@ import { CasesService } from './cases.service';
 import { EmployeesService } from '../employees/employees.service';
 import { VerificationService } from '../verification/verification.service';
 import { TransactionsService } from '../transactions/transactions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtPayload } from '../common/decorators/current-user.decorator';
-import { UserRole } from '../common/enums';
+import { UserRole, EmployeeStatus } from '../common/enums';
 
 @ApiTags('leaderboard')
 @ApiBearerAuth()
@@ -28,6 +29,7 @@ export class LeaderboardController {
     private readonly employeesService: EmployeesService,
     private readonly verificationService: VerificationService,
     private readonly transactionsService: TransactionsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Get()
@@ -65,5 +67,30 @@ export class LeaderboardController {
       sessions,
       transactions,
     };
+  }
+
+  @Patch(':employeeId/freeze')
+  @ApiOperation({ summary: 'Freeze an employee — sets status to FROZEN and fires push notification' })
+  @ApiResponse({ status: 200, description: 'Employee frozen' })
+  async freezeEmployee(
+    @Param('employeeId') employeeId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const employee = await this.employeesService.updateStatusById(
+      employeeId,
+      EmployeeStatus.FROZEN,
+    );
+
+    const pushToken = (employee as unknown as { pushToken?: string | null }).pushToken;
+    if (pushToken) {
+      await this.notificationsService.sendPushNotification(
+        [pushToken],
+        'Account Frozen',
+        'Your salary account has been frozen and requires verification. Please contact your HR admin.',
+        { employeeId, action: 'FROZEN' },
+      );
+    }
+
+    return employee;
   }
 }

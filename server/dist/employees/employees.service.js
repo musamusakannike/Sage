@@ -33,14 +33,13 @@ let EmployeesService = class EmployeesService {
             status: enums_1.EmployeeStatus.PENDING,
         });
     }
-    async findAll(orgId, status, search, page = 1, limit = 20) {
-        if (!orgId || !mongoose_2.Types.ObjectId.isValid(orgId)) {
+    async findAll(orgId, status, search, page = 1, limit = 20, allOrgs = false) {
+        if (!allOrgs && (!orgId || !mongoose_2.Types.ObjectId.isValid(orgId))) {
             return { data: [], total: 0 };
         }
-        const filter = {
-            orgId: new mongoose_2.Types.ObjectId(orgId),
-            deletedAt: false,
-        };
+        const filter = { deletedAt: false };
+        if (!allOrgs)
+            filter.orgId = new mongoose_2.Types.ObjectId(orgId);
         if (status)
             filter.status = status;
         if (search) {
@@ -74,6 +73,15 @@ let EmployeesService = class EmployeesService {
     async updateStatus(id, orgId, status) {
         const employee = await this.employeeModel
             .findOneAndUpdate({ _id: new mongoose_2.Types.ObjectId(id), orgId: new mongoose_2.Types.ObjectId(orgId) }, { status }, { new: true })
+            .lean()
+            .exec();
+        if (!employee)
+            throw new common_1.NotFoundException('Employee not found.');
+        return { ...employee, _id: String(employee._id) };
+    }
+    async updateStatusById(id, status) {
+        const employee = await this.employeeModel
+            .findByIdAndUpdate(id, { status }, { new: true })
             .lean()
             .exec();
         if (!employee)

@@ -7,7 +7,47 @@ import { useEffect, useState } from "react";
 import { usersApi } from "@/lib/api/users.api";
 import { employeesApi } from "@/lib/api/employees.api";
 import { payrollApi } from "@/lib/api/payroll.api";
+import { extractId } from "@/lib/utils";
 import type { Employee, UserProfile, PayrollSchedule } from "@/lib/types";
+
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function getNextDisbursement(day: number): Date {
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth(), day, 0, 0, 0, 0);
+  if (target <= now) target.setMonth(target.getMonth() + 1);
+  return target;
+}
+
+function pad(n: number) { return String(n).padStart(2, "0"); }
+
+function useCountdown(disbursementDay: number) {
+  const [countdown, setCountdown] = useState({ days: "00", hours: "00", minutes: "00", seconds: "00" });
+  const [target, setTarget] = useState<Date>(() => getNextDisbursement(disbursementDay));
+
+  useEffect(() => {
+    const tick = () => {
+      const now = Date.now();
+      let diff = Math.max(0, target.getTime() - now);
+      if (diff === 0) {
+        const next = getNextDisbursement(disbursementDay);
+        setTarget(next);
+        diff = Math.max(0, next.getTime() - now);
+      }
+      const totalSecs = Math.floor(diff / 1000);
+      const days    = Math.floor(totalSecs / 86400);
+      const hours   = Math.floor((totalSecs % 86400) / 3600);
+      const minutes = Math.floor((totalSecs % 3600) / 60);
+      const seconds = totalSecs % 60;
+      setCountdown({ days: pad(days), hours: pad(hours), minutes: pad(minutes), seconds: pad(seconds) });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [target, disbursementDay]);
+
+  return { countdown, target };
+}
 
 interface DashboardStats {
   totalEmployees: number;
@@ -64,7 +104,9 @@ export default function DashboardPage() {
 
         setUserProfile(userRes.data.data);
 
-        const employeeData = employeesRes.data.data.data;
+        const employeeData = employeesRes.data.data.data.map(
+          e => ({ ...e, _id: extractId(e._id) }),
+        );
         setEmployees(employeeData);
 
         const totalEmployees = employeesRes.data.data.total;
@@ -92,6 +134,9 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
+  const disbursementDay = payrollSchedule?.disbursementDay ?? 25;
+  const { countdown, target } = useCountdown(disbursementDay);
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-[#f0f2f6]">
@@ -109,6 +154,9 @@ export default function DashboardPage() {
   const orgName = userProfile?.orgName || "Organization";
   const verifiedCount = stats.cleared;
   const pendingCount = stats.totalEmployees - stats.cleared;
+  const cycleMonth = MONTH_NAMES[target.getMonth()];
+  const cycleYear  = target.getFullYear();
+  const disburseDate = `${disbursementDay} ${cycleMonth} ${cycleYear}`;
 
   return (
     <div className="flex min-h-screen bg-[#f0f2f6]">
@@ -122,8 +170,8 @@ export default function DashboardPage() {
             <div className="flex flex-1 flex-col gap-2 min-w-0">
               <p className="text-white text-[14px] font-normal">Next Payroll Disbursement</p>
               <div className="flex flex-col gap-1">
-                <p className="text-white text-[22px] font-bold leading-tight">May 2026 Salary Cycle</p>
-                <p className="text-white text-[14px] font-normal">Scheduled for 25 May 2026 — via Squad Disburse</p>
+                <p className="text-white text-[22px] font-bold leading-tight">{cycleMonth} {cycleYear} Salary Cycle</p>
+                <p className="text-white text-[14px] font-normal">Scheduled for {disburseDate} — via Squad Disburse</p>
               </div>
               <span className="inline-flex items-center gap-1 bg-[#dcfce7] text-[#158079] text-[12px] font-medium px-[6px] py-1 rounded-full self-start">
                 <span className="w-1.5 h-1.5 bg-[#158079] rounded-full shrink-0" />
@@ -131,13 +179,18 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="flex items-center gap-px shrink-0">
-              {[{ val: "05", label: "Days" }, { val: "14", label: "Hours" }, { val: "22", label: "Minutes" }].map(({ val, label }, i) => (
+              {[
+                { val: countdown.days,    label: "Days"    },
+                { val: countdown.hours,   label: "Hours"   },
+                { val: countdown.minutes, label: "Minutes" },
+                { val: countdown.seconds, label: "Seconds" },
+              ].map(({ val, label }, i) => (
                 <div key={label} className="flex items-center">
-                  <div className="bg-white/10 rounded-lg w-[80px] p-3 flex flex-col items-center gap-1">
+                  <div className="bg-white/10 rounded-lg w-[72px] p-3 flex flex-col items-center gap-1">
                     <span className="text-white text-[32px] font-semibold leading-none tabular-nums">{val}</span>
-                    <span className="text-[#828282] text-[14px] font-medium">{label}</span>
+                    <span className="text-[#828282] text-[12px] font-medium">{label}</span>
                   </div>
-                  {i < 2 && <span className="text-white text-[32px] font-semibold px-px">:</span>}
+                  {i < 3 && <span className="text-white text-[32px] font-semibold px-px">:</span>}
                 </div>
               ))}
             </div>
@@ -232,9 +285,9 @@ export default function DashboardPage() {
                   <tbody>
                     {employees.slice(0, 9).map((emp) => (
                       <tr
-                        key={String(emp._id)}
+                        key={emp._id}
                         className="border-b border-[#ededed] hover:bg-[#f8f8f8] cursor-pointer transition-colors"
-                        onClick={() => router.push(`/hr-admin/employees/${String(emp._id)}`)}
+                        onClick={() => router.push(`/hr-admin/employees/${emp._id}`)}
                       >
                         <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
                           <div className="w-4 h-4 border border-[#dfe1e6] rounded bg-white" />
@@ -246,7 +299,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="min-w-0">
                               <p className="text-[#4d4d4d] text-[12px] font-medium leading-tight overflow-hidden text-ellipsis whitespace-nowrap">{emp.name}</p>
-                              <p className="text-[#787878] text-[10px] font-normal leading-tight overflow-hidden text-ellipsis whitespace-nowrap">{String(emp._id).slice(-8).toUpperCase()} · {emp.roleTitle}</p>
+                              <p className="text-[#787878] text-[10px] font-normal leading-tight overflow-hidden text-ellipsis whitespace-nowrap">{emp._id.slice(-8).toUpperCase()} · {emp.roleTitle}</p>
                             </div>
                           </div>
                         </td>
